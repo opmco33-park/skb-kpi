@@ -527,7 +527,7 @@ function updBar(){}
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log.slice(-500),users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');localStorage.setItem(LS,j);saveToFirebase();}catch(e){toast('저장 실패','e');}}
+function save(){try{const d={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme,kpi:S.kpi,log:S.log.slice(-500),users:S.users,oo:S.orgOrder,ann:S.announcement||'',wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage save error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);toast('저장 오류: '+e.message,'e');}}
 function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
 function showSettings(){toast('설정은 관리자 콘솔에서 관리합니다','i');}
 function closeSet(){}
@@ -1654,16 +1654,27 @@ function applyRemoteData(d){
 function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
-  const d={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log.slice(-500),users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,t:Date.now()};
-  S._lastFBTime=d.t;
-  _fbRef.set(d).then(()=>{
+  try{
+    const raw={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],t:Date.now()};
+    // Remove undefined values (Firebase rejects them)
+    const d=JSON.parse(JSON.stringify(raw));
+    S._lastFBTime=d.t;
+    _fbRef.set(d).then(()=>{
+      _fbSyncing=false;
+      updateFBStatus('synced');
+    }).catch(e=>{
+      _fbSyncing=false;
+      updateFBStatus('error');
+      const msg=e.message||'';
+      if(msg.includes('PERMISSION_DENIED'))toast('Firebase 권한 오류 — 보안규칙을 확인하세요','e');
+      else if(msg.includes('Network'))toast('네트워크 오류 — 인터넷 연결 확인','e');
+      else toast('Firebase 동기화 실패 (로컬 저장은 정상)','w');
+      console.error('Firebase write error:',e);
+    });
+  }catch(e){
     _fbSyncing=false;
-    updateFBStatus('synced');
-  }).catch(e=>{
-    _fbSyncing=false;
-    updateFBStatus('error');
-    console.error('Firebase save error:',e);
-  });
+    console.error('Firebase serialize error:',e);
+  }
 }
 
 function loadFromFirebase(){
