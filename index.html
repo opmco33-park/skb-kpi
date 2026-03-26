@@ -479,9 +479,9 @@ function ensureDefaultAdmin(){
 }
 async function ensureAdminPwH(){
   const defH=await H(DEF_APW);
-  // Fix any user with empty/missing pwH
-  Object.values(S.users).forEach(u=>{if(!u.pwH)u.pwH=defH;});
-  save();
+  let changed=false;
+  Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
+  if(changed)save();
 }
 
 async function doLogin(){
@@ -792,7 +792,7 @@ function renderAdm(){if(!S.isAdmin)return;document.getElementById('an').innerHTM
 
 // ── 1. MENU EDITOR ──
 function aMenu(el){const gks=ordKeys();el.innerHTML=`<div class="adm-s"><div class="adm-st">🏗️ 조직 구조 관리</div><div class="adm-ss">조직을 추가·삭제·이름변경하고, 드래그로 순서를 변경합니다.</div><div id="org-list">${gks.map(g=>`<div class="arow" draggable="true" data-o="${E(g)}" ondragstart="dS(event)" ondragover="dO(event)" ondragleave="dL(event)" ondrop="dD(event)" ondragend="dE(event)"><span class="grip">☰</span><span style="font-size:12px;font-weight:700;flex:1">${E(S.kpi[g]?.label||g)}</span><span style="font-size:9px;color:var(--t3)">${Object.keys(S.kpi[g]?.units||{}).length}개 단위</span><button class="btn" style="font-size:9px;padding:2px 6px" onclick="aRenOrg('${E(g)}')">이름변경</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="aDelOrg('${E(g)}')">삭제</button></div>`).join('')}</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-p" onclick="aAddOrg()">+ 조직 추가</button></div></div><div class="adm-s"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="adm-st" style="margin:0">📂 하위조직/섹션</div><div style="display:flex;gap:5px">${S._aso?`<button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="aAddUnit('${E(S._aso)}')">+ 하위조직</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="aBulkAddSec()">+ 섹션 일괄추가</button>`:''}</div></div><div class="adm-ss">조직을 선택하면 하위 편집 가능</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${gks.map(g=>`<button class="org-btn${g===S._aso?' on':''}" onclick="S._aso='${E(g)}';renderAdm()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div id="adm-ul">${aUnits()}</div></div>`;}
-function aUnits(){const g=S._aso;if(!g||!S.kpi[g])return'<div style="color:var(--t3);font-size:11px">조직 선택</div>';return Object.keys(S.kpi[g].units).map(u=>{const un=S.kpi[g].units[u];return`<div class="arow" style="flex-wrap:wrap" draggable="true" data-ug="${E(g)}" data-uu="${E(u)}" ondragstart="_uDrag=this.dataset.uu;this.classList.add('dragging')" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');aReorderUnit('${E(g)}',_uDrag,this.dataset.uu)" ondragend="this.classList.remove('dragging')"><span class="grip">☰</span><span style="font-size:12px;font-weight:700;flex:1">${E(u)}</span><span style="font-size:9px;color:var(--t3)">${un.sections.length}섹션 ${un.sections.reduce((a,s)=>a+s.items.length,0)}지표</span><button class="btn" style="font-size:9px;padding:2px 6px" onclick="aRenU('${E(g)}','${E(u)}')">이름변경</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="aDelU('${E(g)}','${E(u)}')">삭제</button><div style="width:100%;padding-left:20px;margin-top:4px">${un.sections.map((s,si)=>`<div style="display:flex;align-items:center;gap:5px;padding:2px 0"><div class="dot dot-${s.type==='financial'?'f':s.type==='common'?'c':'s'}"></div><span style="font-size:10px;font-weight:600;flex:1">${E(s.name)} <span style="color:var(--t3)">(${s.items.length}개)</span></span><button class="btn" style="font-size:8px;padding:1px 4px" onclick="aRenSec('${E(g)}','${E(u)}',${si})">이름</button><button class="btn" style="font-size:8px;padding:1px 4px" onclick="aBulkRenSec('${E(s.name)}')">일괄변경</button><button class="btn btn-d" style="font-size:8px;padding:1px 4px" onclick="aDelSec('${E(g)}','${E(u)}',${si})">삭제</button></div>`).join('')}<button class="btn" style="font-size:9px;padding:2px 6px;margin-top:4px" onclick="aAddSec('${E(g)}','${E(u)}')">+섹션</button></div></div>`;}).join('');}
+function aUnits(){const g=S._aso;if(!g||!S.kpi[g]){S._aso=null;return'<div style="color:var(--t3);font-size:11px">조직을 선택하세요</div>';}return Object.keys(S.kpi[g].units).map(u=>{const un=S.kpi[g].units[u];return`<div class="arow" style="flex-wrap:wrap" draggable="true" data-ug="${E(g)}" data-uu="${E(u)}" ondragstart="_uDrag=this.dataset.uu;this.classList.add('dragging')" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');aReorderUnit('${E(g)}',_uDrag,this.dataset.uu)" ondragend="this.classList.remove('dragging')"><span class="grip">☰</span><span style="font-size:12px;font-weight:700;flex:1">${E(u)}</span><span style="font-size:9px;color:var(--t3)">${un.sections.length}섹션 ${un.sections.reduce((a,s)=>a+s.items.length,0)}지표</span><button class="btn" style="font-size:9px;padding:2px 6px" onclick="aRenU('${E(g)}','${E(u)}')">이름변경</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="aDelU('${E(g)}','${E(u)}')">삭제</button><div style="width:100%;padding-left:20px;margin-top:4px">${un.sections.map((s,si)=>`<div style="display:flex;align-items:center;gap:5px;padding:2px 0"><div class="dot dot-${s.type==='financial'?'f':s.type==='common'?'c':'s'}"></div><span style="font-size:10px;font-weight:600;flex:1">${E(s.name)} <span style="color:var(--t3)">(${s.items.length}개)</span></span><button class="btn" style="font-size:8px;padding:1px 4px" onclick="aRenSec('${E(g)}','${E(u)}',${si})">이름</button><button class="btn" style="font-size:8px;padding:1px 4px" onclick="aBulkRenSec('${E(s.name)}')">일괄변경</button><button class="btn btn-d" style="font-size:8px;padding:1px 4px" onclick="aDelSec('${E(g)}','${E(u)}',${si})">삭제</button></div>`).join('')}<button class="btn" style="font-size:9px;padding:2px 6px;margin-top:4px" onclick="aAddSec('${E(g)}','${E(u)}')">+섹션</button></div></div>`;}).join('');}
 let _uDrag=null;
 
 let _dg=null;function dS(e){_dg=e.currentTarget.dataset.o;e.currentTarget.classList.add('dragging');}function dO(e){e.preventDefault();e.currentTarget.classList.add('dragover');}function dL(e){e.currentTarget.classList.remove('dragover');}function dD(e){e.preventDefault();e.currentTarget.classList.remove('dragover');const tgt=e.currentTarget.dataset.o;if(!_dg||_dg===tgt)return;const arr=S.orgOrder.length?[...S.orgOrder]:Object.keys(S.kpi);const fi=arr.indexOf(_dg),ti=arr.indexOf(tgt);if(fi<0||ti<0)return;arr.splice(fi,1);arr.splice(ti,0,_dg);S.orgOrder=arr;addL('순서변경',_dg);save();renderAdm();renderNav();}function dE(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.dragover').forEach(el=>el.classList.remove('dragover'));}
@@ -1836,19 +1836,22 @@ function initFirebase(cfg){
 }
 
 function applyRemoteData(d){
-  if(d.act)S.act=d.act;if(d.ascr)S.ascr=d.ascr;
-  if(d.SL)Object.keys(SL).forEach(k=>delete SL[k]);if(d.SL)Object.assign(SL,d.SL);
-  if(d.kpi)S.kpi=d.kpi;if(d.users)S.users=d.users;
-  if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;
-  if(d.wg)S.widgets=d.wg;if(d.yr)S.yearly=d.yr;
-  if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;
-  if(d.tg)S.tags=d.tg;if(d.al)S.alerts=d.al;
-  if(d.log)S.log=d.log;
-  // Update current account reference if exists
+  if(d.act&&Object.keys(d.act).length)S.act=d.act;
+  if(d.ascr&&Object.keys(d.ascr).length)S.ascr=d.ascr;
+  if(d.SL&&Object.keys(d.SL).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,d.SL);}
+  if(d.kpi&&Object.keys(d.kpi).length)S.kpi=d.kpi;
+  if(d.users&&Object.keys(d.users).length)S.users=d.users;
+  if(d.oo&&d.oo.length)S.orgOrder=d.oo;
+  if(d.ann)S.announcement=d.ann;
+  if(d.wg&&d.wg.length)S.widgets=d.wg;
+  if(d.yr&&Object.keys(d.yr).length)S.yearly=d.yr;
+  if(d.dl&&Object.keys(d.dl).length)S.deadlines=d.dl;
+  if(d.cm&&Object.keys(d.cm).length)S.comments=d.cm;
+  if(d.tg&&Object.keys(d.tg).length)S.tags=d.tg;
+  if(d.al&&d.al.length)S.alerts=d.al;
+  if(d.log&&d.log.length)S.log=d.log;
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
-  // Also save to localStorage as backup
   try{localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
-  // Re-render current view
   if(S.page==='dash')renderDash();
   if(S.page==='kpi'){renderNav();renderKPI();}
   if(S.page==='log')renderLog();
