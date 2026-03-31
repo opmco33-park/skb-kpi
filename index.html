@@ -432,6 +432,7 @@ const S={
   // PI Pool: {orgKey: [{id,category,name,unit,baseline,target,owner,status,note}]}
   piPool:{},
   piOrg:null,
+  piCategories:null, // null = use defaults
 };
 const SL={};
 const AVATARS=['👨‍💼','👩‍💼','👨‍💻','👩‍💻','🧑‍💼','👨‍🔬','👩‍🔬','🧑‍💻','👨‍🏫','👩‍🏫','🦸‍♂️','🦸‍♀️','🧑‍🚀','👨‍🎨','👩‍🎨','🧙‍♂️','🧙‍♀️','🦊','🐻','🐼','🦁','🐯','🐸','🦉','🐧'];
@@ -494,7 +495,7 @@ async function ensureAdminPwH(){
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
   if(changed){
     // Save to localStorage only (not Firebase) during init
-    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||[],t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   }
 }
 
@@ -558,8 +559,11 @@ function updBar(){}
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||[],t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
+    // Fix Firebase array-to-object conversion in nested structures
+    Object.values(d.kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;if(un.sections&&!Array.isArray(un.sections)){const ks=Object.keys(un.sections);if(ks.every(k=>/^\d+$/.test(k)))un.sections=ks.sort((a,b)=>+a-+b).map(k=>un.sections[k]);else un.sections=[];}if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{if(sec.items&&!Array.isArray(sec.items)){const ks=Object.keys(sec.items);if(ks.every(k=>/^\d+$/.test(k)))sec.items=ks.sort((a,b)=>+a-+b).map(k=>sec.items[k]);else sec.items=[];}if(!Array.isArray(sec.items))sec.items=[];});});});
+    Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
 function showSettings(){toast('설정은 관리자 콘솔에서 관리합니다','i');}
 function closeSet(){}
 function chgPw(){}
@@ -800,11 +804,12 @@ const AT=[
   {id:'yearly',ic:'📅',lb:'전사KPI 관리'},
   {id:'deadline',ic:'⏰',lb:'마감/공지/알림'},
   {id:'analysis',ic:'🔬',lb:'분석/시뮬레이션'},
+  {id:'pimgr',ic:'📌',lb:'PI 관리'},
   {id:'report',ic:'📑',lb:'보고서'},
   {id:'sysdata',ic:'💾',lb:'시스템/백업'},
 ];
 
-function renderAdm(){if(!S.isAdmin)return;document.getElementById('an').innerHTML=AT.map(t=>`<button class="adm-ni${S.admTab===t.id?' on':''}" onclick="S.admTab='${t.id}';renderAdm()"><span style="font-size:13px">${t.ic}</span>${t.lb}</button>`).join('');const b=document.getElementById('ab');const fn={menu:aMenu,dashwg:aDashWg,kpimgr:aKpiMgr,perms:aPerms,yearly:aYearly,deadline:aDeadlineAnnAlerts,analysis:aAnalysis,report:aReport,sysdata:aSysData};b.innerHTML='';(fn[S.admTab]||fn.menu)(b);}
+function renderAdm(){if(!S.isAdmin)return;document.getElementById('an').innerHTML=AT.map(t=>`<button class="adm-ni${S.admTab===t.id?' on':''}" onclick="S.admTab='${t.id}';renderAdm()"><span style="font-size:13px">${t.ic}</span>${t.lb}</button>`).join('');const b=document.getElementById('ab');const fn={menu:aMenu,dashwg:aDashWg,kpimgr:aKpiMgr,perms:aPerms,yearly:aYearly,deadline:aDeadlineAnnAlerts,analysis:aAnalysis,pimgr:aPIMgr,report:aReport,sysdata:aSysData};b.innerHTML='';(fn[S.admTab]||fn.menu)(b);}
 
 // ── 1. MENU EDITOR ──
 function aMenu(el){const gks=ordKeys();el.innerHTML=`<div class="adm-s"><div class="adm-st">🏗️ 조직 구조 관리</div><div class="adm-ss">조직을 추가·삭제·이름변경하고, 드래그로 순서를 변경합니다.</div><div id="org-list">${gks.map(g=>`<div class="arow" draggable="true" data-o="${E(g)}" ondragstart="dS(event)" ondragover="dO(event)" ondragleave="dL(event)" ondrop="dD(event)" ondragend="dE(event)"><span class="grip">☰</span><span style="font-size:12px;font-weight:700;flex:1">${E(S.kpi[g]?.label||g)}</span><span style="font-size:9px;color:var(--t3)">${Object.keys(S.kpi[g]?.units||{}).length}개 단위</span><button class="btn" style="font-size:9px;padding:2px 6px" onclick="aRenOrg('${E(g)}')">이름변경</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="aDelOrg('${E(g)}')">삭제</button></div>`).join('')}</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-p" onclick="aAddOrg()">+ 조직 추가</button></div></div><div class="adm-s"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="adm-st" style="margin:0">📂 하위조직/섹션</div><div style="display:flex;gap:5px">${S._aso?`<button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="aAddUnit('${E(S._aso)}')">+ 하위조직</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="aBulkAddSec()">+ 섹션 일괄추가</button>`:''}</div></div><div class="adm-ss">조직을 선택하면 하위 편집 가능</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${gks.map(g=>`<button class="org-btn${g===S._aso?' on':''}" onclick="S._aso='${E(g)}';renderAdm()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div id="adm-ul">${aUnits()}</div></div>`;}
@@ -1176,6 +1181,77 @@ function aOrgPw(el){const gks=ordKeys().filter(g=>g!=='전사KPI');el.innerHTML=
 async function aChgOPw(g){const inp=document.getElementById('opw-'+CSS.escape(g));if(!inp?.value||inp.value.length<4){toast('4자 이상','e');return;}S.orgPw[g]=await H(inp.value);save();inp.value='';toast(g+' PW 변경','s');renderAdm();}
 
 // ── 9. SYSTEM DATA ──
+// ── PI MANAGEMENT (Admin) ──
+function aPIMgr(el){
+  const gks=ordKeys().filter(g=>g!=='전사KPI');
+  const cats=PI_CATEGORIES();
+  // PI stats per org
+  let totalPI=0,confirmedPI=0;
+  const orgStats=gks.map(g=>{const pool=S.piPool[g]||[];totalPI+=pool.length;confirmedPI+=pool.filter(p=>p.status==='확정').length;return{g,label:S.kpi[g]?.label||g,count:pool.length,confirmed:pool.filter(p=>p.status==='확정').length,reviewing:pool.filter(p=>p.status==='검토중').length};});
+
+  el.innerHTML=`<div class="adm-s"><div class="adm-st">📌 PI 카테고리 관리</div>
+  <div class="adm-ss">Performance Index의 분류 카테고리를 관리합니다. 추가/삭제/이름변경이 가능합니다.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px" id="pi-cat-list">${cats.map((c,i)=>`<div class="arow" style="padding:5px 10px;display:inline-flex;gap:6px;align-items:center"><span style="font-size:12px;font-weight:700">${E(c)}</span><button class="btn" style="font-size:8px;padding:1px 5px" onclick="renamePICat(${i})">이름변경</button><button class="btn btn-d" style="font-size:8px;padding:1px 5px" onclick="delPICat(${i})">삭제</button></div>`).join('')}</div>
+  <div style="display:flex;gap:6px"><button class="btn btn-p" style="font-size:10px" onclick="addPICat()">+ 카테고리 추가</button><button class="btn" style="font-size:10px" onclick="resetPICat()">기본값 복원</button></div>
+  </div>
+
+  <div class="adm-s"><div class="adm-st">📊 조직별 PI 현황</div>
+  <div class="adm-ss">전체 ${totalPI}개 PI · 확정 ${confirmedPI}개</div>
+  <div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="text-align:left">조직</th><th>등록</th><th>확정</th><th>검토중</th><th>확정률</th><th></th></tr></thead><tbody>
+  ${orgStats.map(o=>{const pct=o.count?Math.round(o.confirmed/o.count*100):0;return`<tr><td style="font-weight:700">${E(o.label)}</td><td style="text-align:center">${o.count}</td><td style="text-align:center;color:var(--green);font-weight:700">${o.confirmed}</td><td style="text-align:center;color:var(--amber)">${o.reviewing}</td><td style="text-align:center"><span style="font-weight:700;color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--t3)'}">${pct}%</span></td><td style="text-align:right"><button class="btn" style="font-size:9px" onclick="S.piOrg='${E(o.g)}';go('pi')">이동</button></td></tr>`;}).join('')}
+  </tbody></table></div></div>
+
+  <div class="adm-s"><div class="adm-st">🔧 일괄 작업</div>
+  <div class="adm-ss">여러 조직의 PI를 한번에 관리합니다.</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="btn btn-p" onclick="piBulkStatusChange()">상태 일괄변경</button>
+    <button class="btn" onclick="piExportCSV()">📊 PI 전체 내보내기</button>
+    <button class="btn btn-d" onclick="piClearAll()">전체 PI 삭제</button>
+  </div></div>`;
+}
+
+function addPICat(){const n=prompt('새 카테고리 이름');if(!n)return;const cats=PI_CATEGORIES();if(cats.includes(n)){toast('이미 존재','e');return;}if(!S.piCategories)S.piCategories=[...PI_DEF_CATEGORIES];S.piCategories.push(n);addL('PI카테고리추가',n);save();renderAdm();}
+function renamePICat(i){const cats=PI_CATEGORIES();const old=cats[i];const n=prompt('카테고리 이름 변경',old);if(!n||n===old)return;if(!S.piCategories)S.piCategories=[...PI_DEF_CATEGORIES];S.piCategories[i]=n;
+  // Update all PIs with old category name
+  let cnt=0;Object.values(S.piPool).forEach(pool=>{if(Array.isArray(pool))pool.forEach(p=>{if(p.category===old){p.category=n;cnt++;}});});
+  addL('PI카테고리변경',old+'→'+n+' ('+cnt+'개 PI)');save();renderAdm();}
+function delPICat(i){const cats=PI_CATEGORIES();const name=cats[i];if(cats.length<=1){toast('최소 1개 필요','e');return;}
+  // Check if any PI uses this category
+  let used=0;Object.values(S.piPool).forEach(pool=>{if(Array.isArray(pool))pool.forEach(p=>{if(p.category===name)used++;});});
+  if(used&&!confirm('"'+name+'" 카테고리에 '+used+'개 PI가 있습니다. 해당 PI는 "기타"로 변경됩니다. 삭제하시겠습니까?'))return;
+  if(!S.piCategories)S.piCategories=[...PI_DEF_CATEGORIES];S.piCategories.splice(i,1);
+  const fallback=S.piCategories[0]||'기타';
+  Object.values(S.piPool).forEach(pool=>{if(Array.isArray(pool))pool.forEach(p=>{if(p.category===name)p.category=fallback;});});
+  addL('PI카테고리삭제',name);save();renderAdm();}
+function resetPICat(){if(!confirm('카테고리를 기본값으로 복원하시겠습니까?\n기존 PI의 카테고리는 유지됩니다.'))return;S.piCategories=null;addL('PI카테고리초기화','기본값 복원');save();renderAdm();toast('기본값 복원','s');}
+
+function piBulkStatusChange(){
+  const newStatus=prompt('변경할 상태를 입력하세요:\n'+PI_STATUS.join(', '));
+  if(!newStatus||!PI_STATUS.includes(newStatus))return;
+  const fromStatus=prompt('어떤 상태의 PI를 변경할까요?\n'+PI_STATUS.join(', ')+'\n(전체 변경하려면 "전체" 입력)');
+  if(!fromStatus)return;
+  let cnt=0;
+  Object.values(S.piPool).forEach(pool=>{if(Array.isArray(pool))pool.forEach(p=>{if(fromStatus==='전체'||p.status===fromStatus){p.status=newStatus;cnt++;}});});
+  addL('PI상태일괄변경',(fromStatus==='전체'?'전체':fromStatus)+'→'+newStatus+' ('+cnt+'건)');
+  save();renderAdm();toast(cnt+'개 PI 상태 변경','s');
+}
+
+function piExportCSV(){
+  let c='조직,카테고리,지수명,단위,기준값,목표값,담당자,상태,비고\n';
+  ordKeys().filter(g=>g!=='전사KPI').forEach(g=>{
+    const pool=S.piPool[g]||[];
+    pool.forEach(p=>{c+=`"${S.kpi[g]?.label||g}","${p.category||''}","${p.name}","${p.unit||''}","${p.baseline||''}","${p.target||''}","${p.owner||''}","${p.status||''}","${p.note||''}"\n`;});
+  });
+  const b=new Blob(['\uFEFF'+c],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='PI_Pool_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('PI 내보내기 완료','s');
+}
+
+function piClearAll(){
+  const total=Object.values(S.piPool).reduce((a,p)=>a+(Array.isArray(p)?p.length:0),0);
+  if(!total){toast('삭제할 PI가 없습니다','i');return;}
+  if(!confirm('전체 '+total+'개 PI를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'))return;
+  S.piPool={};addL('PI전체삭제',total+'개');save();renderAdm();renderPI();toast(total+'개 PI 삭제','i');
+}
+
 // ── REPORT (PPT) ──
 function aReport(el){
   const gks=ordKeys();
@@ -1801,8 +1877,9 @@ document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='z'&&!e.shiftKey){
 
 
 // ── PI POOL ──
-const PI_CATEGORIES=['재무','성장','효율','고객','인력','기술','ESG','기타'];
+const PI_DEF_CATEGORIES=['재무','성장','효율','고객','인력','기술','ESG','기타'];
 const PI_STATUS=['등록','검토중','확정','보류'];
+function PI_CATEGORIES(){return(S.piCategories&&S.piCategories.length)?S.piCategories:PI_DEF_CATEGORIES;}
 
 function renderPI(){
   const tabsEl=document.getElementById('pi-org-tabs');
@@ -1815,7 +1892,7 @@ function renderPI(){
   const label=S.kpi[g]?.label||g;
 
   // Group by category
-  const grouped={};PI_CATEGORIES.forEach(c=>grouped[c]=[]);
+  const grouped={};PI_CATEGORIES().forEach(c=>grouped[c]=[]);
   pool.forEach(item=>{const c=item.category||'기타';if(!grouped[c])grouped[c]=[];grouped[c].push(item);});
 
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
@@ -1832,7 +1909,7 @@ function renderPI(){
     const reviewing=pool.filter(p=>p.status==='검토중').length;
     h+=`<div class="chips" style="margin-bottom:14px"><div class="chip"><div class="chip-l">전체</div><div class="chip-v" style="font-size:15px;color:var(--blue)">${pool.length}</div></div><div class="chip"><div class="chip-l">확정</div><div class="chip-v" style="font-size:15px;color:var(--green)">${confirmed}</div></div><div class="chip"><div class="chip-l">검토중</div><div class="chip-v" style="font-size:15px;color:var(--amber)">${reviewing}</div></div></div>`;
 
-    PI_CATEGORIES.forEach(cat=>{
+    PI_CATEGORIES().forEach(cat=>{
       const items=grouped[cat];
       if(!items.length)return;
       h+=`<div class="sec"><div class="sec-h"><div class="dot dot-${cat==='재무'?'f':cat==='고객'||cat==='ESG'?'c':'s'}"></div><span style="font-size:12px;font-weight:800">${cat}</span><span style="font-size:10px;color:var(--t3);margin-left:4px">${items.length}개</span></div>
@@ -1859,14 +1936,19 @@ function openPIEdit(g,id){
   if(!item)return;
   _piCtx={g,id:item.id,isNew};
 
+  // For new PI: show multi-org selector
+  const allOrgs=ordKeys().filter(og=>og!=='전사KPI'&&canEdit(og));
+  const orgSelector=isNew&&allOrgs.length>1?`<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">적용 조직 <span style="font-size:9px;color:var(--cyan)">(복수 선택 가능)</span></div><div style="display:flex;gap:5px;flex-wrap:wrap" id="pi-orgs">${allOrgs.map(og=>`<button type="button" class="org-btn${og===g?' on':''}" data-og="${E(og)}" onclick="this.classList.toggle('on')" style="font-size:10px;padding:3px 8px">${E(S.kpi[og]?.label||og)}</button>`).join('')}</div></div>`:'';
+
   const m=document.createElement('div');
   m.className='modal';m.id='pi-edit-m';m.style.display='flex';
   m.onclick=e=>{if(e.target===m)m.remove();};
   m.innerHTML=`<div class="mbox mbox-md">
     <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px"><span>${isNew?'➕ PI 추가':'📝 PI 수정'}</span><button class="btn" onclick="document.getElementById('pi-edit-m').remove()">✕</button></div>
+    ${orgSelector}
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px">
       <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">지수명</div><input class="sinp" id="pi-name" value="${E(item.name)}" placeholder="예: 매출 성장률"/></div>
-      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">카테고리</div><select class="sinp" id="pi-cat">${PI_CATEGORIES.map(c=>`<option${c===item.category?' selected':''}>${c}</option>`).join('')}</select></div>
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">카테고리</div><select class="sinp" id="pi-cat">${PI_CATEGORIES().map(c=>`<option${c===item.category?' selected':''}>${c}</option>`).join('')}</select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
       <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">단위</div><input class="sinp" id="pi-unit" value="${E(item.unit||'')}" placeholder="%, 억, 건"/></div>
@@ -1889,8 +1971,8 @@ function savePIEdit(){
   const{g,id,isNew}=_piCtx;
   const nm=document.getElementById('pi-name').value.trim();
   if(!nm){toast('지수명을 입력하세요','e');return;}
-  const item={
-    id,name:nm,
+  const itemBase={
+    name:nm,
     category:document.getElementById('pi-cat').value,
     unit:document.getElementById('pi-unit').value.trim(),
     baseline:document.getElementById('pi-base').value.trim(),
@@ -1899,12 +1981,29 @@ function savePIEdit(){
     status:document.getElementById('pi-status').value,
     note:document.getElementById('pi-note').value.trim(),
   };
-  if(!S.piPool[g])S.piPool[g]=[];
-  if(isNew){S.piPool[g].push(item);addL('PI추가',g+': '+nm);}
-  else{const idx=S.piPool[g].findIndex(p=>p.id===id);if(idx>=0)S.piPool[g][idx]=item;addL('PI수정',g+': '+nm);}
+  if(isNew){
+    // Get selected orgs (multi-select)
+    const orgBtns=document.querySelectorAll('#pi-orgs .org-btn.on');
+    const selOrgs=orgBtns.length?Array.from(orgBtns).map(b=>b.dataset.og):[g];
+    let cnt=0;
+    selOrgs.forEach(og=>{
+      if(!S.piPool[og])S.piPool[og]=[];
+      const item={...itemBase,id:'pi_'+Date.now()+'_'+cnt};
+      S.piPool[og].push(item);cnt++;
+    });
+    addL('PI추가',nm+' → '+selOrgs.map(og=>S.kpi[og]?.label||og).join(', '));
+    toast(cnt+'개 조직에 PI 추가','s');
+  }else{
+    const item={...itemBase,id};
+    if(!S.piPool[g])S.piPool[g]=[];
+    const idx=S.piPool[g].findIndex(p=>p.id===id);
+    if(idx>=0)S.piPool[g][idx]=item;
+    addL('PI수정',g+': '+nm);
+    toast('저장 완료','s');
+  }
   save();
   document.getElementById('pi-edit-m')?.remove();
-  renderPI();toast('저장 완료','s');
+  renderPI();
 }
 
 function delPI(g,id){
@@ -1981,12 +2080,15 @@ function startFBListener(){
 }
 
 function applyRemoteData(d){
-  // Firebase stores arrays as objects with numeric keys — convert back
-  const fixArr=v=>{if(v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>/^\d+$/.test(k)))return Object.values(v);return v;};
-  // Strip placeholder values used to prevent Firebase from deleting empty data
+  // Firebase converts arrays to objects {0:x,1:y} — fix recursively
+  const fixArr=v=>{if(v&&typeof v==='object'&&!Array.isArray(v)){const ks=Object.keys(v);if(ks.length&&ks.every(k=>/^\d+$/.test(k)))return ks.sort((a,b)=>+a-+b).map(k=>v[k]);}return v;};
+  // Deep fix: kpi.*.units.*.sections[] and items[] must be arrays
+  const fixKpi=kpi=>{if(!kpi||typeof kpi!=='object')return kpi;Object.values(kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;un.sections=fixArr(un.sections)||[];if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{sec.items=fixArr(sec.items)||[];if(!Array.isArray(sec.items))sec.items=[];});});});return kpi;};
+  const fixPi=pi=>{if(!pi||typeof pi!=='object')return pi;Object.keys(pi).forEach(g=>{pi[g]=fixArr(pi[g])||[];if(!Array.isArray(pi[g]))pi[g]=[];});return pi;};
   const stripP=o=>{if(!o||typeof o!=='object')return o;if(Array.isArray(o))return o.filter(x=>!(x&&typeof x==='object'&&x._===0));const c={...o};delete c._;return c;};
   if(d.oo)d.oo=fixArr(d.oo);if(d.wg)d.wg=fixArr(d.wg);if(d.al)d.al=fixArr(d.al);if(d.log)d.log=fixArr(d.log);
-
+  if(d.kpi)d.kpi=fixKpi(d.kpi);
+  if(d.pi)d.pi=fixPi(d.pi);
   if(d.act){const c=stripP(d.act);if(Object.keys(c).length)S.act=c;}
   if(d.ascr){const c=stripP(d.ascr);if(Object.keys(c).length)S.ascr=c;}
   if(d.SL){const c=stripP(d.SL);if(Object.keys(c).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,c);}}
@@ -2002,10 +2104,12 @@ function applyRemoteData(d){
   if(d.al&&Array.isArray(d.al)){const c=d.al.filter(x=>x&&!(x._===0));if(c.length)S.alerts=c;}
   if(d.log&&Array.isArray(d.log)){const c=d.log.filter(x=>x&&x!=='_');if(c.length)S.log=c;}
   if(d.pi){const c=stripP(d.pi);if(Object.keys(c).length)S.piPool=c;}
+  if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
   try{localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   if(S.page==='dash')renderDash();
   if(S.page==='kpi'){renderNav();renderKPI();}
+  if(S.page==='pi')renderPI();
   if(S.page==='log')renderLog();
   if(S.page==='admin')renderAdm();
   renderAnn();
@@ -2015,7 +2119,7 @@ function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
@@ -2047,7 +2151,7 @@ function loadFromFirebase(){
         if(!d.kpi)d.kpi={};if(!d.act)d.act={};if(!d.ascr)d.ascr={};
         if(!d.SL)d.SL={};if(!d.users)d.users={};if(!d.oo)d.oo=[];
         if(!d.wg)d.wg=[];if(!d.yr)d.yr={};if(!d.dl)d.dl={};
-        if(!d.cm)d.cm={};if(!d.tg)d.tg={};if(!d.al)d.al=[];if(!d.log)d.log=[];if(!d.pi)d.pi={};
+        if(!d.cm)d.cm={};if(!d.tg)d.tg={};if(!d.al)d.al=[];if(!d.log)d.log=[];if(!d.pi)d.pi={};if(!d.pic)d.pic=[];
         applyRemoteData(d);
         resolve(true);
       }else{resolve(false);}
