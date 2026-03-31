@@ -197,6 +197,7 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
   <div class="tabs" id="main-tabs">
     <button class="tab on" onclick="go('dash')" id="t-dash">📊 대시보드</button>
     <button class="tab" onclick="go('kpi')" id="t-kpi">📋 KPI 관리</button>
+    <button class="tab" onclick="go('pi')" id="t-pi">📌 PI Pool</button>
     <button class="tab" onclick="go('log')" id="t-log">📝 이력</button>
     <button class="tab" onclick="go('admin')" id="t-admin" style="display:none">🛡️ 관리자</button>
   </div>
@@ -235,6 +236,12 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
 </div>
 
 <!-- ═══ CHANGELOG ═══ -->
+<!-- PI Pool Page -->
+<div class="pg" id="pg-pi">
+  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px" id="pi-org-tabs"></div>
+  <div id="pi-content"></div>
+</div>
+
 <div class="pg" id="pg-log">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:8px">
     <div><div style="font-size:17px;font-weight:900">📝 변경 이력</div></div>
@@ -421,6 +428,9 @@ const S={
     {id:'a2',type:'noinput',label:'미입력 지표 알림',threshold:0,enabled:true},
     {id:'a3',type:'scorechange',label:'점수 급변 알림 (±20%)',threshold:20,enabled:false},
   ],
+  // PI Pool: {orgKey: [{id,category,name,unit,baseline,target,owner,status,note}]}
+  piPool:{},
+  piOrg:null,
 };
 const SL={};
 const AVATARS=['👨‍💼','👩‍💼','👨‍💻','👩‍💻','🧑‍💼','👨‍🔬','👩‍🔬','🧑‍💻','👨‍🏫','👩‍🏫','🦸‍♂️','🦸‍♀️','🧑‍🚀','👨‍🎨','👩‍🎨','🧙‍♂️','🧙‍♀️','🦊','🐻','🐼','🦁','🐯','🐸','🦉','🐧'];
@@ -459,9 +469,9 @@ function go(p){
   if(!isLoggedIn()){toast('로그인 필요','e');return;}
   if(p==='admin'&&!S.isAdmin){toast('관리자 권한 필요','e');return;}
   S.page=p;document.querySelectorAll('.pg').forEach(e=>e.classList.remove('on'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('on'));
-  const m={dash:'pg-dash',kpi:'pg-kpi',log:'pg-log',admin:'pg-admin'};
+  const m={dash:'pg-dash',kpi:'pg-kpi',pi:'pg-pi',log:'pg-log',admin:'pg-admin'};
   document.getElementById(m[p])?.classList.add('on');document.getElementById('t-'+p)?.classList.add('on');
-  if(p==='dash'){renderDash();renderAnn();}if(p==='kpi'){const vo=visibleOrgs();if(!S.aGrp||!vo.includes(S.aGrp)){S.aGrp=vo[0]||null;S.aUnit=S.aGrp?Object.keys(S.kpi[S.aGrp]?.units||{})[0]:null;}renderNav();renderKPI();setTimeout(addReportBtn,50);const eb=document.getElementById('kpi-edit-bar');if(eb)eb.style.display=vo.some(g=>canEdit(g))?'flex':'none';}if(p==='log')renderLog();if(p==='admin')renderAdm();
+  if(p==='dash'){renderDash();renderAnn();}if(p==='kpi'){const vo=visibleOrgs();if(!S.aGrp||!vo.includes(S.aGrp)){S.aGrp=vo[0]||null;S.aUnit=S.aGrp?Object.keys(S.kpi[S.aGrp]?.units||{})[0]:null;}renderNav();renderKPI();setTimeout(addReportBtn,50);const eb=document.getElementById('kpi-edit-bar');if(eb)eb.style.display=vo.some(g=>canEdit(g))?'flex':'none';}if(p==='pi')renderPI();if(p==='log')renderLog();if(p==='admin')renderAdm();
 }
 function toggleTheme(){S.theme=S.theme==='dark'?'light':'dark';document.body.classList.toggle('light',S.theme==='light');document.getElementById('thBtn').textContent=S.theme==='light'?'🌙 다크':'☀️ 라이트';save();}
 
@@ -543,8 +553,8 @@ function updBar(){}
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
 function showSettings(){toast('설정은 관리자 콘솔에서 관리합니다','i');}
 function closeSet(){}
 function chgPw(){}
@@ -1772,6 +1782,121 @@ document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='z'&&!e.shiftKey){
 // ══════════════════════════════════════════════════════════════
 
 
+// ── PI POOL ──
+const PI_CATEGORIES=['재무','성장','효율','고객','인력','기술','ESG','기타'];
+const PI_STATUS=['등록','검토중','확정','보류'];
+
+function renderPI(){
+  const tabsEl=document.getElementById('pi-org-tabs');
+  const contentEl=document.getElementById('pi-content');
+  const vo=visibleOrgs().filter(g=>g!=='전사KPI');
+  if(!vo.length){tabsEl.innerHTML='';contentEl.innerHTML='<div style="text-align:center;padding:50px;color:var(--t3)"><div style="font-size:42px;margin-bottom:14px">📌</div><div style="font-size:15px;font-weight:800;color:var(--t2)">조직이 없습니다</div><div style="font-size:11px;margin-top:6px">관리자가 조직을 추가하면 PI Pool을 관리할 수 있습니다</div></div>';return;}
+  if(!S.piOrg||!vo.includes(S.piOrg))S.piOrg=vo[0];
+  tabsEl.innerHTML=vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('');
+  const g=S.piOrg;const pool=S.piPool[g]||[];const ed=canEdit(g);
+  const label=S.kpi[g]?.label||g;
+
+  // Group by category
+  const grouped={};PI_CATEGORIES.forEach(c=>grouped[c]=[]);
+  pool.forEach(item=>{const c=item.category||'기타';if(!grouped[c])grouped[c]=[];grouped[c].push(item);});
+
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
+    <div><div style="font-size:18px;font-weight:900">${E(label)} — Business Performance Index Pool</div>
+    <div style="font-size:11px;color:var(--t2);margin-top:2px">${pool.length}개 지수 등록${ed?'':' · 읽기전용'}</div></div>
+    ${ed?`<button class="btn btn-p" onclick="addPI('${E(g)}')">+ PI 추가</button>`:''}
+  </div>`;
+
+  if(!pool.length){
+    h+=`<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:10px">📌</div><div style="font-size:13px;font-weight:700;color:var(--t2)">등록된 Performance Index가 없습니다</div>${ed?'<div style="font-size:11px;margin-top:6px">위 "+ PI 추가" 버튼으로 조직의 주요 지수를 등록하세요</div>':''}</div>`;
+  }else{
+    // Summary chips
+    const confirmed=pool.filter(p=>p.status==='확정').length;
+    const reviewing=pool.filter(p=>p.status==='검토중').length;
+    h+=`<div class="chips" style="margin-bottom:14px"><div class="chip"><div class="chip-l">전체</div><div class="chip-v" style="font-size:15px;color:var(--blue)">${pool.length}</div></div><div class="chip"><div class="chip-l">확정</div><div class="chip-v" style="font-size:15px;color:var(--green)">${confirmed}</div></div><div class="chip"><div class="chip-l">검토중</div><div class="chip-v" style="font-size:15px;color:var(--amber)">${reviewing}</div></div></div>`;
+
+    PI_CATEGORIES.forEach(cat=>{
+      const items=grouped[cat];
+      if(!items.length)return;
+      h+=`<div class="sec"><div class="sec-h"><div class="dot dot-${cat==='재무'?'f':cat==='고객'||cat==='ESG'?'c':'s'}"></div><span style="font-size:12px;font-weight:800">${cat}</span><span style="font-size:10px;color:var(--t3);margin-left:4px">${items.length}개</span></div>
+      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="text-align:left;width:25%">지수명</th><th style="width:8%">단위</th><th style="width:12%">기준값(Baseline)</th><th style="width:12%">목표값(Target)</th><th style="width:10%">담당자</th><th style="width:8%">상태</th><th style="width:25%">비고</th>${ed?'<th style="width:10%"></th>':''}</tr></thead><tbody>`;
+      items.forEach(item=>{
+        const stColor={등록:'var(--t3)',검토중:'var(--amber)',확정:'var(--green)',보류:'var(--red)'}[item.status]||'var(--t3)';
+        h+=`<tr><td style="font-weight:700">${E(item.name)}</td><td style="text-align:center;font-size:11px">${E(item.unit||'')}</td><td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px">${E(item.baseline||'—')}</td><td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600">${E(item.target||'—')}</td><td style="text-align:center;font-size:11px">${E(item.owner||'—')}</td><td style="text-align:center"><span style="font-size:10px;font-weight:700;color:${stColor}">${item.status||'등록'}</span></td><td style="font-size:10px;color:var(--t2)">${E(item.note||'')}</td>${ed?`<td style="text-align:right"><button class="btn" style="font-size:9px;padding:2px 6px" onclick="editPI('${E(g)}','${item.id}')">수정</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="delPI('${E(g)}','${item.id}')">삭제</button></td>`:''}</tr>`;
+      });
+      h+=`</tbody></table></div></div>`;
+    });
+  }
+  contentEl.innerHTML=h;
+}
+
+// PI Edit Modal
+let _piCtx=null;
+function addPI(g){openPIEdit(g,null);}
+function editPI(g,id){openPIEdit(g,id);}
+
+function openPIEdit(g,id){
+  const isNew=!id;
+  const pool=S.piPool[g]||[];
+  const item=isNew?{id:'pi_'+Date.now(),category:'기타',name:'',unit:'',baseline:'',target:'',owner:S.curAccount?.name||'',status:'등록',note:''}:pool.find(p=>p.id===id);
+  if(!item)return;
+  _piCtx={g,id:item.id,isNew};
+
+  const m=document.createElement('div');
+  m.className='modal';m.id='pi-edit-m';m.style.display='flex';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="mbox mbox-md">
+    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px"><span>${isNew?'➕ PI 추가':'📝 PI 수정'}</span><button class="btn" onclick="document.getElementById('pi-edit-m').remove()">✕</button></div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px">
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">지수명</div><input class="sinp" id="pi-name" value="${E(item.name)}" placeholder="예: 매출 성장률"/></div>
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">카테고리</div><select class="sinp" id="pi-cat">${PI_CATEGORIES.map(c=>`<option${c===item.category?' selected':''}>${c}</option>`).join('')}</select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">단위</div><input class="sinp" id="pi-unit" value="${E(item.unit||'')}" placeholder="%, 억, 건"/></div>
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">기준값 (Baseline)</div><input class="sinp" id="pi-base" value="${E(item.baseline||'')}" placeholder="현재 수준"/></div>
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">목표값 (Target)</div><input class="sinp" id="pi-tgt" value="${E(item.target||'')}" placeholder="목표 수준"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">담당자</div><input class="sinp" id="pi-owner" value="${E(item.owner||'')}" placeholder="담당자명"/></div>
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">상태</div><select class="sinp" id="pi-status">${PI_STATUS.map(s=>`<option${s===item.status?' selected':''}>${s}</option>`).join('')}</select></div>
+    </div>
+    <div style="margin-bottom:14px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">비고</div><input class="sinp" id="pi-note" value="${E(item.note||'')}" placeholder="추가 설명"/></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('pi-edit-m').remove()">취소</button><button class="btn btn-p" onclick="savePIEdit()">저장</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  setTimeout(()=>document.getElementById('pi-name').focus(),100);
+}
+
+function savePIEdit(){
+  if(!_piCtx)return;
+  const{g,id,isNew}=_piCtx;
+  const nm=document.getElementById('pi-name').value.trim();
+  if(!nm){toast('지수명을 입력하세요','e');return;}
+  const item={
+    id,name:nm,
+    category:document.getElementById('pi-cat').value,
+    unit:document.getElementById('pi-unit').value.trim(),
+    baseline:document.getElementById('pi-base').value.trim(),
+    target:document.getElementById('pi-tgt').value.trim(),
+    owner:document.getElementById('pi-owner').value.trim(),
+    status:document.getElementById('pi-status').value,
+    note:document.getElementById('pi-note').value.trim(),
+  };
+  if(!S.piPool[g])S.piPool[g]=[];
+  if(isNew){S.piPool[g].push(item);addL('PI추가',g+': '+nm);}
+  else{const idx=S.piPool[g].findIndex(p=>p.id===id);if(idx>=0)S.piPool[g][idx]=item;addL('PI수정',g+': '+nm);}
+  save();
+  document.getElementById('pi-edit-m')?.remove();
+  renderPI();toast('저장 완료','s');
+}
+
+function delPI(g,id){
+  const pool=S.piPool[g]||[];
+  const item=pool.find(p=>p.id===id);
+  if(!item||!confirm('"'+item.name+'" 삭제?'))return;
+  S.piPool[g]=pool.filter(p=>p.id!==id);
+  addL('PI삭제',g+': '+item.name);save();renderPI();toast('삭제됨','i');
+}
+
 // ── PASSWORD CHANGE (all users) ──
 function openPwChange(){
   document.getElementById('pwc-old').value='';
@@ -1821,7 +1946,7 @@ function initFirebase(cfg){
     _fbRef.on('value',snap=>{
       if(_fbSyncing)return;
       const d=snap.val();
-      if(d&&d.t&&d.t>=(S._lastFBTime||0)){
+      if(d&&d.t&&d.t>(S._lastFBTime||0)){
         S._lastFBTime=d.t;
         applyRemoteData(d);
         updateFBStatus('synced');
@@ -1836,20 +1961,27 @@ function initFirebase(cfg){
 }
 
 function applyRemoteData(d){
-  if(d.act&&Object.keys(d.act).length)S.act=d.act;
-  if(d.ascr&&Object.keys(d.ascr).length)S.ascr=d.ascr;
-  if(d.SL&&Object.keys(d.SL).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,d.SL);}
-  if(d.kpi&&Object.keys(d.kpi).length)S.kpi=d.kpi;
-  if(d.users&&Object.keys(d.users).length)S.users=d.users;
-  if(d.oo&&d.oo.length)S.orgOrder=d.oo;
+  // Firebase stores arrays as objects with numeric keys — convert back
+  const fixArr=v=>{if(v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>/^\d+$/.test(k)))return Object.values(v);return v;};
+  // Strip placeholder values used to prevent Firebase from deleting empty data
+  const stripP=o=>{if(!o||typeof o!=='object')return o;if(Array.isArray(o))return o.filter(x=>!(x&&typeof x==='object'&&x._===0));const c={...o};delete c._;return c;};
+  if(d.oo)d.oo=fixArr(d.oo);if(d.wg)d.wg=fixArr(d.wg);if(d.al)d.al=fixArr(d.al);if(d.log)d.log=fixArr(d.log);
+
+  if(d.act){const c=stripP(d.act);if(Object.keys(c).length)S.act=c;}
+  if(d.ascr){const c=stripP(d.ascr);if(Object.keys(c).length)S.ascr=c;}
+  if(d.SL){const c=stripP(d.SL);if(Object.keys(c).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,c);}}
+  if(d.kpi){const c=stripP(d.kpi);if(Object.keys(c).length)S.kpi=c;}
+  if(d.users){const c=stripP(d.users);if(Object.keys(c).length)S.users=c;}
+  if(d.oo&&Array.isArray(d.oo)){const c=d.oo.filter(x=>x&&x!=='_');if(c.length)S.orgOrder=c;}
   if(d.ann)S.announcement=d.ann;
-  if(d.wg&&d.wg.length)S.widgets=d.wg;
-  if(d.yr&&Object.keys(d.yr).length)S.yearly=d.yr;
-  if(d.dl&&Object.keys(d.dl).length)S.deadlines=d.dl;
-  if(d.cm&&Object.keys(d.cm).length)S.comments=d.cm;
-  if(d.tg&&Object.keys(d.tg).length)S.tags=d.tg;
-  if(d.al&&d.al.length)S.alerts=d.al;
-  if(d.log&&d.log.length)S.log=d.log;
+  if(d.wg&&Array.isArray(d.wg)){const c=d.wg.filter(x=>x&&!(x._===0));if(c.length)S.widgets=c;}
+  if(d.yr){const c=stripP(d.yr);if(Object.keys(c).length)S.yearly=c;}
+  if(d.dl){const c=stripP(d.dl);if(Object.keys(c).length)S.deadlines=c;}
+  if(d.cm){const c=stripP(d.cm);if(Object.keys(c).length)S.comments=c;}
+  if(d.tg){const c=stripP(d.tg);if(Object.keys(c).length)S.tags=c;}
+  if(d.al&&Array.isArray(d.al)){const c=d.al.filter(x=>x&&!(x._===0));if(c.length)S.alerts=c;}
+  if(d.log&&Array.isArray(d.log)){const c=d.log.filter(x=>x&&x!=='_');if(c.length)S.log=c;}
+  if(d.pi){const c=stripP(d.pi);if(Object.keys(c).length)S.piPool=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
   try{localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   if(S.page==='dash')renderDash();
@@ -1863,12 +1995,12 @@ function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
   try{
-    const raw={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
     _fbRef.set(d).then(()=>{
-      _fbSyncing=false;
+      setTimeout(()=>{_fbSyncing=false;},500);
       updateFBStatus('synced');
     }).catch(e=>{
       _fbSyncing=false;
@@ -1890,7 +2022,12 @@ function loadFromFirebase(){
     if(!_fbReady||!_fbRef){resolve(false);return;}
     _fbRef.once('value').then(snap=>{
       const d=snap.val();
-      if(d){
+      if(d&&(d.kpi||d.users||d.wg)){
+        // Firebase deletes empty {} and [] — restore defaults for missing fields
+        if(!d.kpi)d.kpi={};if(!d.act)d.act={};if(!d.ascr)d.ascr={};
+        if(!d.SL)d.SL={};if(!d.users)d.users={};if(!d.oo)d.oo=[];
+        if(!d.wg)d.wg=[];if(!d.yr)d.yr={};if(!d.dl)d.dl={};
+        if(!d.cm)d.cm={};if(!d.tg)d.tg={};if(!d.al)d.al=[];if(!d.log)d.log=[];if(!d.pi)d.pi={};
         applyRemoteData(d);
         resolve(true);
       }else{resolve(false);}
