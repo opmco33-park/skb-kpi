@@ -408,6 +408,7 @@ const S={
     {id:'w_deadline',type:'deadline',title:'마감 현황',visible:false,size:'50',row:9},
     {id:'w_tagsum',type:'tag_summary',title:'태그별 달성률',visible:false,size:'50',row:9},
     {id:'w_yoy',type:'yoy_compare',title:'YoY 전년 비교',visible:false,size:'100',row:10},
+    {id:'w_pi',type:'pi_pool',title:'PI Pool 현황',visible:true,size:'100',row:11},
   ],
   admTab:'menu',
   // 5-year yearly data
@@ -491,7 +492,10 @@ async function ensureAdminPwH(){
   const defH=await H(DEF_APW);
   let changed=false;
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
-  if(changed)save();
+  if(changed){
+    // Save to localStorage only (not Firebase) during init
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+  }
 }
 
 async function doLogin(){
@@ -509,6 +513,7 @@ async function doLogin(){
   document.getElementById('lg-id').value='';document.getElementById('lg-pw').value='';errEl.textContent='';
   updateAuthUI();
   addL('로그인',acc.name+' ('+acc.role+')');save();
+  startFBListener();
   go('dash');renderAnn();toast(acc.name+'님 로그인','s');setTimeout(checkAlerts,300);
 }
 
@@ -726,6 +731,7 @@ function renderWidget(w,has){
   if(w.type==='deadline') return wDeadline(has);
   if(w.type==='tag_summary') return wTagSummary(has);
   if(w.type==='yoy_compare') return wYoYCompare(has);
+  if(w.type==='pi_pool') return wPIPool(has);
   return '';
 }
 
@@ -824,7 +830,7 @@ function aBulkRenSec(oldName){const n=prompt('새 섹션 이름 (모든 조직�
 function aDashWg(el){
   const REMOVED_TYPES=['sec_compare','top_bottom','scale_status','lock_status'];
   S.widgets=S.widgets.filter(w=>!REMOVED_TYPES.includes(w.type));
-  const typeIcons={total:'📈',corp_chart:'📊',org_chart:'🏢',sub_status:'📋',ranking:'🏆',no_input:'❓',org_summary:'🗂️'};
+  const typeIcons={total:'📈',corp_chart:'📊',org_chart:'🏢',sub_status:'📋',ranking:'🏆',no_input:'❓',org_summary:'🗂️',pi_pool:'📌'};
   const szLabel={'100':'100%','75':'75%','50':'50%','25':'25%'};
   const maxRow=Math.max(0,...S.widgets.map(w=>w.row||0));
   el.innerHTML=`<div class="adm-s"><div class="adm-st">📊 대시보드 위젯 편집</div><div class="adm-ss">위젯의 표시/숨김, 크기(25~100%), 행 배치를 관리합니다. 같은 행 번호의 위젯은 한 줄에 나란히 배치됩니다.<br><span style="color:var(--cyan)">한 행에 최대 4개(25%×4)까지 배치 가능합니다. 합계가 100%를 초과하면 자동 줄바꿈됩니다.</span></div>
@@ -1728,6 +1734,18 @@ function wYoYCompare(has){
   if(!items.length)return'<div class="card"><div class="card-h"><div class="dot dot-f"></div><div class="card-t">YoY 전년 비교</div></div><div class="card-b" style="text-align:center;padding:14px;color:var(--t3);font-size:11px">5개년 데이터 필요</div></div>';
   return`<div class="card"><div class="card-h"><div class="dot dot-f"></div><div class="card-t">YoY 전년 비교</div></div><div class="card-b"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">${items.map(x=>{const up=x.change>=0;return`<div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:8px 10px"><div style="font-size:10px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${E(x.name)}</div><div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:15px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'}${Math.abs(x.change)}%</span></div><div style="font-size:9px;color:var(--t3)">${E(x.prev)} → ${E(x.cur)}</div></div>`;}).join('')}</div></div></div>`;}
 
+function wPIPool(has){
+  const vo=visibleOrgs().filter(g=>g!=='전사KPI');
+  let total=0,confirmed=0,reviewing=0,orgItems=[];
+  vo.forEach(g=>{
+    const pool=S.piPool[g]||[];
+    pool.forEach(p=>{total++;if(p.status==='확정')confirmed++;if(p.status==='검토중')reviewing++;});
+    if(pool.length)orgItems.push({g,label:S.kpi[g]?.label||g,count:pool.length,confirmed:pool.filter(p=>p.status==='확정').length,pool});
+  });
+  if(!total)return`<div class="card"><div class="card-h clk" onclick="go('pi')"><div class="dot dot-s"></div><div class="card-t">📌 PI Pool 현황</div></div><div class="card-b" style="text-align:center;padding:16px;color:var(--t3);font-size:11px">등록된 PI가 없습니다 · <span style="color:var(--cyan);cursor:pointer" onclick="go('pi')">PI Pool 페이지에서 등록</span></div></div>`;
+  return`<div class="card"><div class="card-h clk" onclick="go('pi')"><div class="dot dot-s"></div><div class="card-t">📌 PI Pool 현황</div><span style="margin-left:auto;display:flex;gap:10px;font-size:11px"><span style="color:var(--blue);font-weight:700">${total}개</span><span style="color:var(--green)">확정 ${confirmed}</span><span style="color:var(--amber)">검토 ${reviewing}</span></span></div><div class="card-b"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">${orgItems.map(o=>{const pct=o.count?Math.round(o.confirmed/o.count*100):0;return`<div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:10px;cursor:pointer" onclick="S.piOrg='${E(o.g)}';go('pi')"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;font-weight:800">${E(o.label)}</span><span style="font-size:10px;color:var(--t3)">${o.count}개</span></div><div style="height:4px;background:var(--bd);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--green);border-radius:2px"></div></div><div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--t3)"><span>확정 ${o.confirmed}/${o.count}</span><span style="font-weight:700;color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--t3)'}">${pct}%</span></div></div>`;}).join('')}</div></div></div>`;
+}
+
 // ── PRINT REPORT BUTTON IN KPI PAGE ──
 function viewScale(g,u,si,ii){
   const it=S.kpi[g]?.units[u]?.sections[si]?.items[ii];if(!it)return;
@@ -1801,7 +1819,7 @@ function renderPI(){
   pool.forEach(item=>{const c=item.category||'기타';if(!grouped[c])grouped[c]=[];grouped[c].push(item);});
 
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
-    <div><div style="font-size:18px;font-weight:900">${E(label)} — Business Performance Index Pool</div>
+    <div><div style="font-size:18px;font-weight:900">${E(label)}</div>
     <div style="font-size:11px;color:var(--t2);margin-top:2px">${pool.length}개 지수 등록${ed?'':' · 읽기전용'}</div></div>
     ${ed?`<button class="btn btn-p" onclick="addPI('${E(g)}')">+ PI 추가</button>`:''}
   </div>`;
@@ -1942,22 +1960,24 @@ function initFirebase(cfg){
     _fbRef=_fb.ref('skb_kpi_data');
     _fbReady=true;
     updateFBStatus('connected');
-    // Listen for remote changes
-    _fbRef.on('value',snap=>{
-      if(_fbSyncing)return;
-      const d=snap.val();
-      if(d&&d.t&&d.t>(S._lastFBTime||0)){
-        S._lastFBTime=d.t;
-        applyRemoteData(d);
-        updateFBStatus('synced');
-      }
-    });
     return true;
   }catch(e){
     console.error('Firebase init error:',e);
     updateFBStatus('error');
     return false;
   }
+}
+function startFBListener(){
+  if(!_fbReady||!_fbRef)return;
+  _fbRef.on('value',snap=>{
+    if(_fbSyncing)return;
+    const d=snap.val();
+    if(d&&d.t&&d.t>(S._lastFBTime||0)){
+      S._lastFBTime=d.t;
+      applyRemoteData(d);
+      updateFBStatus('synced');
+    }
+  });
 }
 
 function applyRemoteData(d){
