@@ -6,6 +6,7 @@
 <title>KPI 관리 시스템 v4</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -433,6 +434,8 @@ const S={
   piPool:{},
   piOrg:null,
   piCategories:null, // null = use defaults
+  // EmailJS config {serviceId, templateId, publicKey}
+  emailjs:null,
 };
 const SL={};
 const AVATARS=['👨‍💼','👩‍💼','👨‍💻','👩‍💻','🧑‍💼','👨‍🔬','👩‍🔬','🧑‍💻','👨‍🏫','👩‍🏫','🦸‍♂️','🦸‍♀️','🧑‍🚀','👨‍🎨','👩‍🎨','🧙‍♂️','🧙‍♀️','🦊','🐻','🐼','🦁','🐯','🐸','🦉','🐧'];
@@ -495,7 +498,7 @@ async function ensureAdminPwH(){
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
   if(changed){
     // Save to localStorage only (not Firebase) during init
-    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||[],t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||[],ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   }
 }
 
@@ -559,8 +562,8 @@ function updBar(){}
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||[],t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||[],ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.ej)S.emailjs=d.ej;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
     // Fix Firebase array-to-object conversion in nested structures
     Object.values(d.kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;if(un.sections&&!Array.isArray(un.sections)){const ks=Object.keys(un.sections);if(ks.every(k=>/^\d+$/.test(k)))un.sections=ks.sort((a,b)=>+a-+b).map(k=>un.sections[k]);else un.sections=[];}if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{if(sec.items&&!Array.isArray(sec.items)){const ks=Object.keys(sec.items);if(ks.every(k=>/^\d+$/.test(k)))sec.items=ks.sort((a,b)=>+a-+b).map(k=>sec.items[k]);else sec.items=[];}if(!Array.isArray(sec.items))sec.items=[];});});});
     Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
@@ -1135,7 +1138,7 @@ function aPerms(el){const us=Object.entries(S.users);const roleLbl={admin:'🔴 
   <div style="background:var(--sec);border:1px solid var(--bd);border-radius:9px;padding:12px;margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px">➕ 새 계정 추가</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px" id="nu-avatars">${AVATARS.map((a,i)=>`<button style="font-size:20px;padding:2px 4px;border-radius:6px;border:2px solid ${i===0?'var(--blue)':'transparent'};background:${i===0?'rgba(96,165,250,.1)':'transparent'};cursor:pointer;line-height:1" onclick="pickAvatar(this,${i})">${a}</button>`).join('')}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:end"><div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">로그인 ID</div><input class="sinp" id="nu-id" placeholder="hong.gildong" style="font-size:11px"/></div><div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">이름</div><input class="sinp" id="nu-name" placeholder="홍길동" style="font-size:11px"/></div><div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">비밀번호</div><input type="password" class="sinp" id="nu-pw" placeholder="4자 이상" style="font-size:11px"/></div><button class="btn btn-p" onclick="aAddUser()" style="height:32px">추가</button></div><input type="hidden" id="nu-avatar" value="0"/></div>
   ${us.length?us.map(([id,u])=>{
     const rl=roleLbl[u.role]||u.role;const av=u.avatar||'👤';
-    return`<div class="arow" style="flex-wrap:wrap;padding:10px"><div style="font-size:28px;margin-right:8px;cursor:pointer" onclick="cycleAvatar('${E(id)}')" title="클릭하여 아바타 변경">${av}</div><div style="flex:1;min-width:140px"><div style="font-size:13px;font-weight:800">${E(u.name)} <span style="font-size:10px;color:var(--t3);font-weight:400">@${E(id)}</span></div><div style="font-size:9px;color:var(--t3)">${rl}${u.orgs?.length?' · '+u.orgs.join(', '):u.role==='manager'?' · 전체 조직':''}</div></div><select class="sz-sel" style="font-size:9px" onchange="aSetRole('${E(id)}',this.value)"><option value="admin"${u.role==='admin'?' selected':''}>관리자</option><option value="manager"${u.role==='manager'?' selected':''}>담당자</option><option value="viewer"${u.role==='viewer'?' selected':''}>열람자</option></select><button class="btn" style="font-size:9px" onclick="aResetUserPw('${E(id)}')">PW변경</button>${id!=='admin'?`<button class="btn btn-d" style="font-size:9px" onclick="aDelUser('${E(id)}')">삭제</button>`:''}${u.role==='manager'?`<div style="width:100%;margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">담당 조직 범위 <span style="font-size:8px;color:var(--t3);font-weight:400">(선택 없으면 전체)</span></div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${gks.map(g=>`<button class="org-btn${(u.orgs||[]).includes(g)?' on':''}" onclick="aTogOrg('${E(id)}','${E(g)}')" style="font-size:10px;padding:3px 8px">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div class="perm-g">${PERMS.map(p=>`<div class="perm-c"><div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><div class="tgl ${u.perms?.[p.k]?'on':'off'}" onclick="aTogPerm('${E(id)}','${p.k}',this)"></div><span style="font-size:10px;font-weight:700">${p.l}</span></div><div style="font-size:9px;color:var(--t3)">${p.d}</div></div>`).join('')}</div></div>`:'<div style="width:100%;margin-top:4px;font-size:10px;color:var(--t3);padding:4px">'+(u.role==='admin'?'관리자는 모든 권한을 보유합니다':'열람자는 조회 권한만 보유합니다')+'</div>'}</div>`;
+    return`<div class="arow" style="flex-wrap:wrap;padding:10px"><div style="font-size:28px;margin-right:8px;cursor:pointer" onclick="cycleAvatar('${E(id)}')" title="클릭하여 아바타 변경">${av}</div><div style="flex:1;min-width:140px"><div style="font-size:13px;font-weight:800">${E(u.name)} <span style="font-size:10px;color:var(--t3);font-weight:400">@${E(id)}</span></div><div style="font-size:9px;color:var(--t3)">${rl}${u.orgs?.length?' · '+u.orgs.join(', '):u.role==='manager'?' · 전체 조직':''}</div><div style="margin-top:3px"><input class="sinp" style="font-size:10px;padding:2px 6px;width:200px" value="${E(u.email||'')}" placeholder="이메일 (예: hong@sk.com)" onchange="aSetEmail('${E(id)}',this.value)"/></div></div><select class="sz-sel" style="font-size:9px" onchange="aSetRole('${E(id)}',this.value)"><option value="admin"${u.role==='admin'?' selected':''}>관리자</option><option value="manager"${u.role==='manager'?' selected':''}>담당자</option><option value="viewer"${u.role==='viewer'?' selected':''}>열람자</option></select><button class="btn" style="font-size:9px" onclick="aResetUserPw('${E(id)}')">PW변경</button>${id!=='admin'?`<button class="btn btn-d" style="font-size:9px" onclick="aDelUser('${E(id)}')">삭제</button>`:''}${u.role==='manager'?`<div style="width:100%;margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">담당 조직 범위 <span style="font-size:8px;color:var(--t3);font-weight:400">(선택 없으면 전체)</span></div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${gks.map(g=>`<button class="org-btn${(u.orgs||[]).includes(g)?' on':''}" onclick="aTogOrg('${E(id)}','${E(g)}')" style="font-size:10px;padding:3px 8px">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div class="perm-g">${PERMS.map(p=>`<div class="perm-c"><div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><div class="tgl ${u.perms?.[p.k]?'on':'off'}" onclick="aTogPerm('${E(id)}','${p.k}',this)"></div><span style="font-size:10px;font-weight:700">${p.l}</span></div><div style="font-size:9px;color:var(--t3)">${p.d}</div></div>`).join('')}</div></div>`:'<div style="width:100%;margin-top:4px;font-size:10px;color:var(--t3);padding:4px">'+(u.role==='admin'?'관리자는 모든 권한을 보유합니다':'열람자는 조회 권한만 보유합니다')+'</div>'}</div>`;
   }).join(''):'<div style="color:var(--t3);font-size:11px;text-align:center;padding:14px">등록된 계정 없음</div>'}</div>`;}
 let _nuAvIdx=0;
 function pickAvatar(btn,idx){_nuAvIdx=idx;document.querySelectorAll('#nu-avatars button').forEach((b,i)=>{b.style.borderColor=i===idx?'var(--blue)':'transparent';b.style.background=i===idx?'rgba(96,165,250,.1)':'transparent';});}
@@ -1159,12 +1162,13 @@ function setAvatar(id,av){
   if(S.curAccount?.id===id){S.curAccount.avatar=av;updateAuthUI();}
   toast('아바타 변경 완료','s');
 }
-async function aAddUser(){const idEl=document.getElementById('nu-id'),nmEl=document.getElementById('nu-name'),pwEl=document.getElementById('nu-pw');const id=(idEl?.value||'').trim(),nm=(nmEl?.value||'').trim(),pw=pwEl?.value||'';if(!id){toast('ID를 입력하세요','e');idEl?.focus();return;}if(S.users[id]){toast('이미 존재하는 ID','e');return;}if(!nm){toast('이름을 입력하세요','e');nmEl?.focus();return;}if(pw.length<4){toast('비밀번호 4자 이상','e');pwEl?.focus();return;}const perms={};PERMS.forEach(p=>perms[p.k]=false);S.users[id]={id,name:nm,pwH:await H(pw),role:'viewer',perms,orgs:[],avatar:AVATARS[_nuAvIdx]||'👤'};addL('계정추가',nm+' (@'+id+')');save();renderAdm();toast(nm+' 계정 추가됨','s');}
+async function aAddUser(){const idEl=document.getElementById('nu-id'),nmEl=document.getElementById('nu-name'),pwEl=document.getElementById('nu-pw');const id=(idEl?.value||'').trim(),nm=(nmEl?.value||'').trim(),pw=pwEl?.value||'';if(!id){toast('ID를 입력하세요','e');idEl?.focus();return;}if(S.users[id]){toast('이미 존재하는 ID','e');return;}if(!nm){toast('이름을 입력하세요','e');nmEl?.focus();return;}if(pw.length<4){toast('비밀번호 4자 이상','e');pwEl?.focus();return;}const perms={};PERMS.forEach(p=>perms[p.k]=false);S.users[id]={id,name:nm,pwH:await H(pw),role:'viewer',perms,orgs:[],avatar:AVATARS[_nuAvIdx]||'👤',email:''};addL('계정추가',nm+' (@'+id+')');save();renderAdm();toast(nm+' 계정 추가됨','s');}
 function aDelUser(id){const u=S.users[id];if(id==='admin'){toast('기본 관리자는 삭제 불가','e');return;}if(!confirm('"'+u?.name+'" 계정을 삭제하시겠습니까?'))return;addL('계정삭제',u?.name);delete S.users[id];save();renderAdm();}
 async function aResetUserPw(id){const pw=prompt('새 비밀번호 (4자 이상)');if(!pw||pw.length<4){toast('4자 이상','e');return;}S.users[id].pwH=await H(pw);save();toast('비밀번호 변경 완료','s');}
 function aSetRole(id,role){S.users[id].role=role;addL('역할변경',S.users[id].name+' → '+role);save();renderAdm();}
 function aTogPerm(id,k,el){const u=S.users[id];if(!u)return;u.perms[k]=!u.perms[k];el.className='tgl '+(u.perms[k]?'on':'off');addL('권한변경',u.name+': '+k+'→'+(u.perms[k]?'ON':'OFF'));save();}
 function aTogOrg(id,g){const u=S.users[id];if(!u)return;const i=(u.orgs||[]).indexOf(g);if(i>=0)u.orgs.splice(i,1);else{if(!u.orgs)u.orgs=[];u.orgs.push(g);}addL('조직범위',u.name+': '+(u.orgs.length?u.orgs.join(','):'전체'));save();renderAdm();}
+function aSetEmail(id,email){const u=S.users[id];if(!u)return;u.email=email.trim();save();}
 function aEditUserOrgs(id){renderAdm();}
 
 // ── 6. DATA LOCK ──
@@ -1849,7 +1853,27 @@ function aDeadlineAnnAlerts(el){
   el.innerHTML=`
   <div class="adm-s"><div class="adm-st">⏰ 마감 관리</div><div class="adm-ss">조직별 실적 입력 마감일을 설정합니다.</div>${dlHtml}</div>
   <div class="adm-s"><div class="adm-st">📢 시스템 공지</div><div class="adm-ss">모든 사용자에게 상단 배너로 표시됩니다.</div><textarea class="sinp" id="ann-inp" rows="2" style="resize:vertical">${E(S.announcement)}</textarea><div style="display:flex;gap:6px;margin-top:6px"><button class="btn btn-p" onclick="aSaveAnn()">저장</button><button class="btn" onclick="document.getElementById('ann-inp').value='';aSaveAnn()">삭제</button></div></div>
-  <div class="adm-s"><div class="adm-st">🔔 알림 설정</div><div class="adm-ss">조건부 알림과 대시보드 자동 새로고침을 관리합니다.</div><div style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><span style="font-size:11px;font-weight:700;color:var(--t2)">자동 새로고침</span><select class="sinp" style="width:100px;font-size:10px" onchange="S.autoRefresh=parseInt(this.value);save();setupAutoRefresh();toast('자동 새로고침: '+(this.value==='0'?'꺼짐':this.value+'초'),'i')"><option value="0"${S.autoRefresh===0?' selected':''}>꺼짐</option><option value="30"${S.autoRefresh===30?' selected':''}>30초</option><option value="60"${S.autoRefresh===60?' selected':''}>1분</option><option value="120"${S.autoRefresh===120?' selected':''}>2분</option><option value="300"${S.autoRefresh===300?' selected':''}>5분</option></select></div>${S.alerts.map((a,i)=>`<div class="arow"><div class="tgl ${a.enabled?'on':'off'}" onclick="S.alerts[${i}].enabled=!S.alerts[${i}].enabled;this.className='tgl '+(S.alerts[${i}].enabled?'on':'off');save()"></div><span style="flex:1;font-size:11px;font-weight:700">${E(a.label)}</span></div>`).join('')}<div style="margin-top:8px"><button class="btn btn-p" onclick="checkAlerts()">알림 확인</button></div></div>`;
+  <div class="adm-s"><div class="adm-st">🔔 알림 설정</div><div class="adm-ss">조건부 알림과 대시보드 자동 새로고침을 관리합니다.</div><div style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><span style="font-size:11px;font-weight:700;color:var(--t2)">자동 새로고침</span><select class="sinp" style="width:100px;font-size:10px" onchange="S.autoRefresh=parseInt(this.value);save();setupAutoRefresh();toast('자동 새로고침: '+(this.value==='0'?'꺼짐':this.value+'초'),'i')"><option value="0"${S.autoRefresh===0?' selected':''}>꺼짐</option><option value="30"${S.autoRefresh===30?' selected':''}>30초</option><option value="60"${S.autoRefresh===60?' selected':''}>1분</option><option value="120"${S.autoRefresh===120?' selected':''}>2분</option><option value="300"${S.autoRefresh===300?' selected':''}>5분</option></select></div>${S.alerts.map((a,i)=>`<div class="arow"><div class="tgl ${a.enabled?'on':'off'}" onclick="S.alerts[${i}].enabled=!S.alerts[${i}].enabled;this.className='tgl '+(S.alerts[${i}].enabled?'on':'off');save()"></div><span style="flex:1;font-size:11px;font-weight:700">${E(a.label)}</span></div>`).join('')}<div style="margin-top:8px"><button class="btn btn-p" onclick="checkAlerts()">알림 확인</button></div></div>
+
+  <div class="adm-s"><div class="adm-st">📧 이메일 알림</div>
+  <div class="adm-ss">담당자에게 마감 안내 메일을 발송합니다. <a href="https://www.emailjs.com/" target="_blank" style="color:var(--cyan)">EmailJS</a> 무료 계정이 필요합니다.</div>
+  <div style="display:grid;gap:6px;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+      <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Service ID</div><input class="sinp" id="ej-sid" value="${S.emailjs?.serviceId||''}" placeholder="service_xxxxxx" style="font-size:10px"/></div>
+      <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Template ID</div><input class="sinp" id="ej-tid" value="${S.emailjs?.templateId||''}" placeholder="template_xxxxxx" style="font-size:10px"/></div>
+      <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Public Key</div><input class="sinp" id="ej-pk" value="${S.emailjs?.publicKey||''}" placeholder="your_public_key" style="font-size:10px"/></div>
+    </div>
+    <button class="btn" style="font-size:10px" onclick="saveEmailJSConfig()">설정 저장</button>
+  </div>
+  <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:6px">등록된 이메일</div>
+  <div style="margin-bottom:10px">${Object.entries(S.users).filter(([,u])=>u.email).map(([id,u])=>`<div style="font-size:10px;padding:2px 0"><span style="font-weight:600">${E(u.name)}</span> <span style="color:var(--t3)">@${E(id)}</span> — <span style="color:var(--cyan)">${E(u.email)}</span></div>`).join('')||'<div style="font-size:10px;color:var(--t3)">이메일이 등록된 사용자가 없습니다. 계정/권한 메뉴에서 이메일을 등록하세요.</div>'}</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="btn btn-p" onclick="sendDeadlineMail()">📧 마감 안내 메일 발송</button>
+    <button class="btn" onclick="sendCustomMail()">📧 직접 작성 발송</button>
+    <button class="btn" onclick="testEmailJS()">테스트 발송</button>
+  </div>
+  <div id="email-status" style="margin-top:8px;font-size:10px;color:var(--t3)"></div>
+  </div>`;
 }
 
 // ── COMBINED: Simulation + Benchmark ──
@@ -1864,6 +1888,121 @@ function aAnalysis(el){
   <div class="adm-s"><div class="adm-st">🔬 가중치 시뮬레이션</div><div class="adm-ss">배점을 임시 변경하여 점수/순위 변동을 미리 확인합니다. 실제 데이터에는 영향 없습니다.</div><div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn btn-p" onclick="runSim()">시뮬레이션 실행</button><button class="btn" onclick="resetSim()">초기화</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div id="sim-input" style="max-height:300px;overflow-y:auto">${simHtml}</div><div id="sim-result" style="background:var(--sec);border-radius:8px;padding:12px"><div style="text-align:center;color:var(--t3);font-size:11px;padding:20px">시뮬레이션을 실행하세요</div></div></div></div>
   <div class="adm-s"><div class="adm-st">📊 조직 간 벤치마킹</div><div class="adm-ss">2~4개 조직을 선택하여 섹션별 달성률을 비교합니다.</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">${bmBtns}</div><div id="bm-result"></div></div>`;
   renderBM();
+}
+
+// ── EMAIL NOTIFICATION ──
+function saveEmailJSConfig(){
+  const sid=document.getElementById('ej-sid').value.trim();
+  const tid=document.getElementById('ej-tid').value.trim();
+  const pk=document.getElementById('ej-pk').value.trim();
+  if(!sid||!tid||!pk){toast('모든 필드를 입력하세요','e');return;}
+  S.emailjs={serviceId:sid,templateId:tid,publicKey:pk};
+  save();toast('EmailJS 설정 저장','s');
+}
+
+function _sendEmail(toEmail,toName,subject,body){
+  return new Promise((resolve,reject)=>{
+    if(!S.emailjs?.serviceId||!S.emailjs?.templateId||!S.emailjs?.publicKey){reject('EmailJS 미설정');return;}
+    if(typeof emailjs==='undefined'){reject('EmailJS SDK 로드 실패');return;}
+    emailjs.send(S.emailjs.serviceId,S.emailjs.templateId,{
+      to_email:toEmail,to_name:toName,subject:subject,message:body
+    },S.emailjs.publicKey).then(()=>resolve()).catch(e=>reject(e?.text||e));
+  });
+}
+
+async function testEmailJS(){
+  const st=document.getElementById('email-status');
+  if(!S.emailjs?.serviceId){st.innerHTML='<span style="color:var(--red)">EmailJS 설정을 먼저 저장하세요</span>';return;}
+  const adminEmail=S.users['admin']?.email;
+  if(!adminEmail){st.innerHTML='<span style="color:var(--red)">관리자 이메일을 먼저 등록하세요 (계정/권한 메뉴)</span>';return;}
+  st.innerHTML='<span style="color:var(--amber)">테스트 메일 발송 중...</span>';
+  try{
+    await _sendEmail(adminEmail,'관리자','[KPI] 테스트 메일','KPI 관리 시스템 이메일 알림 테스트입니다.\n정상적으로 수신되었다면 설정이 완료된 것입니다.\n\n발송 시각: '+new Date().toLocaleString('ko-KR'));
+    st.innerHTML='<span style="color:var(--green)">✅ '+adminEmail+'로 테스트 메일 발송 성공</span>';
+    toast('테스트 메일 발송 완료','s');
+  }catch(e){
+    st.innerHTML='<span style="color:var(--red)">❌ 발송 실패: '+e+'</span>';
+    toast('메일 발송 실패','e');
+  }
+}
+
+async function sendDeadlineMail(){
+  const st=document.getElementById('email-status');
+  if(!S.emailjs?.serviceId){st.innerHTML='<span style="color:var(--red)">EmailJS 설정을 먼저 저장하세요</span>';return;}
+  const now=new Date();const targets=[];
+  // Find managers with email and deadlines
+  Object.entries(S.users).forEach(([id,u])=>{
+    if(!u.email||u.role==='viewer')return;
+    const orgs=(u.role==='admin')?ordKeys():u.orgs?.length?u.orgs:ordKeys();
+    const dlInfo=[];
+    orgs.forEach(g=>{
+      const dl=S.deadlines[g];if(!dl?.date)return;
+      const days=Math.ceil((new Date(dl.date)-now)/(86400000));
+      const filled=Object.keys(S.kpi[g]?.units||{}).reduce((a,uk)=>{const un=S.kpi[g].units[uk];return a+un.sections.reduce((b,s,si)=>b+s.items.reduce((c,it,ii)=>{const ac=S.act[AK(g,uk,si,ii)]||'';return c+(ac.trim()?1:0);},0),0);},0);
+      const total=Object.keys(S.kpi[g]?.units||{}).reduce((a,uk)=>{const un=S.kpi[g].units[uk];return a+un.sections.reduce((b,s)=>b+s.items.length,0);},0);
+      if(days<=7&&days>=-3)dlInfo.push({org:S.kpi[g]?.label||g,date:dl.date,days,filled,total});
+    });
+    if(dlInfo.length)targets.push({id,name:u.name,email:u.email,deadlines:dlInfo});
+  });
+  if(!targets.length){st.innerHTML='<span style="color:var(--t3)">발송 대상 없음 (마감 7일 이내 조직이 없거나 이메일 미등록)</span>';return;}
+  if(!confirm(targets.length+'명에게 마감 안내 메일을 발송하시겠습니까?\n\n'+targets.map(t=>t.name+' ('+t.email+')').join('\n')))return;
+  st.innerHTML='<span style="color:var(--amber)">발송 중... 0/'+targets.length+'</span>';
+  let ok=0,fail=0;
+  for(const t of targets){
+    const dlText=t.deadlines.map(d=>{
+      const status=d.days<0?'⚠️ '+(-d.days)+'일 경과':d.days===0?'⚠️ 오늘 마감':'📅 D-'+d.days;
+      return'  · '+d.org+': '+d.date+' ('+status+') — 입력 '+d.filled+'/'+d.total;
+    }).join('\n');
+    const body=t.name+'님 안녕하세요.\n\nKPI 실적 입력 마감이 다가왔습니다.\n\n'+dlText+'\n\n미입력 지표가 있다면 마감일까지 입력을 완료해주세요.\n\nKPI 관리 시스템';
+    try{
+      await _sendEmail(t.email,t.name,'[KPI] 실적 입력 마감 안내',body);ok++;
+    }catch(e){fail++;console.error('Mail fail:',t.email,e);}
+    st.innerHTML='<span style="color:var(--amber)">발송 중... '+(ok+fail)+'/'+targets.length+'</span>';
+  }
+  st.innerHTML=`<span style="color:var(--green)">✅ 발송 완료 — 성공 ${ok}건${fail?' / <span style="color:var(--red)">실패 '+fail+'건</span>':''}</span>`;
+  addL('메일발송','마감안내 '+ok+'건'+(fail?' (실패'+fail+')':''));save();
+  toast('메일 발송 완료: '+ok+'건','s');
+}
+
+async function sendCustomMail(){
+  const st=document.getElementById('email-status');
+  if(!S.emailjs?.serviceId){st.innerHTML='<span style="color:var(--red)">EmailJS 설정을 먼저 저장하세요</span>';return;}
+  const recipients=Object.entries(S.users).filter(([,u])=>u.email);
+  if(!recipients.length){st.innerHTML='<span style="color:var(--red)">이메일이 등록된 사용자가 없습니다</span>';return;}
+
+  // Create send modal
+  const m=document.createElement('div');m.className='modal';m.id='mail-m';m.style.display='flex';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="mbox mbox-md">
+    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px"><span>📧 메일 작성</span><button class="btn" onclick="document.getElementById('mail-m').remove()">✕</button></div>
+    <div style="margin-bottom:10px"><div style="font-size:10px;color:var(--t3);margin-bottom:4px">수신자 선택</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px"><button class="btn" style="font-size:9px" onclick="document.querySelectorAll('.mail-chk').forEach(c=>c.checked=true)">전체</button><button class="btn" style="font-size:9px" onclick="document.querySelectorAll('.mail-chk').forEach(c=>c.checked=false)">해제</button></div>
+    <div style="max-height:120px;overflow-y:auto;border:1px solid var(--bd);border-radius:6px;padding:6px">${recipients.map(([id,u])=>`<label style="display:flex;align-items:center;gap:5px;font-size:10px;padding:2px 0;cursor:pointer"><input type="checkbox" class="mail-chk" value="${E(id)}" checked>${E(u.name)} <span style="color:var(--t3)">${E(u.email)}</span></label>`).join('')}</div></div>
+    <div style="margin-bottom:8px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">제목</div><input class="sinp" id="mail-subj" value="[KPI] 안내사항" style="font-size:11px"/></div>
+    <div style="margin-bottom:12px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">내용</div><textarea class="sinp" id="mail-body" rows="6" style="resize:vertical;font-size:11px" placeholder="메일 내용을 입력하세요..."></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('mail-m').remove()">취소</button><button class="btn btn-p" onclick="doSendCustomMail()">📧 발송</button></div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+async function doSendCustomMail(){
+  const subj=document.getElementById('mail-subj').value.trim();
+  const body=document.getElementById('mail-body').value.trim();
+  if(!subj||!body){toast('제목과 내용을 입력하세요','e');return;}
+  const checked=Array.from(document.querySelectorAll('.mail-chk:checked')).map(c=>c.value);
+  if(!checked.length){toast('수신자를 선택하세요','e');return;}
+  const targets=checked.map(id=>S.users[id]).filter(u=>u?.email);
+  if(!confirm(targets.length+'명에게 메일을 발송하시겠습니까?'))return;
+  let ok=0,fail=0;
+  for(const u of targets){
+    try{await _sendEmail(u.email,u.name,subj,u.name+'님 안녕하세요.\n\n'+body+'\n\nKPI 관리 시스템');ok++;}
+    catch(e){fail++;console.error('Mail fail:',u.email,e);}
+  }
+  document.getElementById('mail-m')?.remove();
+  addL('메일발송','직접발송 '+ok+'건'+(fail?' (실패'+fail+')':''));save();
+  toast('발송 완료: 성공 '+ok+'건'+(fail?', 실패 '+fail+'건':''),'s');
+  const st=document.getElementById('email-status');
+  if(st)st.innerHTML=`<span style="color:var(--green)">✅ 직접 발송 완료 — 성공 ${ok}건</span>`;
 }
 
 // KEYBOARD
@@ -2104,6 +2243,7 @@ function applyRemoteData(d){
   if(d.al&&Array.isArray(d.al)){const c=d.al.filter(x=>x&&!(x._===0));if(c.length)S.alerts=c;}
   if(d.log&&Array.isArray(d.log)){const c=d.log.filter(x=>x&&x!=='_');if(c.length)S.log=c;}
   if(d.pi){const c=stripP(d.pi);if(Object.keys(c).length)S.piPool=c;}
+  if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
   try{localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
@@ -2119,7 +2259,7 @@ function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],ej:S.emailjs||{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
