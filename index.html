@@ -1214,8 +1214,8 @@ function aPIMgr(el){
   </div></div>`;
 }
 
-function addPICat(){const n=prompt('새 카테고리 이름');if(!n)return;const cats=PI_CATEGORIES();if(cats.includes(n)){toast('이미 존재','e');return;}if(!S.piCategories)S.piCategories=[...PI_DEF_CATEGORIES];S.piCategories.push(n);addL('PI카테고리추가',n);save();renderAdm();}
-function renamePICat(i){const cats=PI_CATEGORIES();const old=cats[i];const n=prompt('카테고리 이름 변경',old);if(!n||n===old)return;if(!S.piCategories)S.piCategories=[...PI_DEF_CATEGORIES];S.piCategories[i]=n;
+function addPICat(){const n=prompt('새 카테고리 이름');if(!n)return;const cats=PI_CATEGORIES();if(cats.includes(n)){toast('이미 존재','e');return;}ensurePICatArray();S.piCategories.push(n);addL('PI카테고리추가',n);save();renderAdm();}
+function renamePICat(i){const cats=PI_CATEGORIES();const old=cats[i];const n=prompt('카테고리 이름 변경',old);if(!n||n===old)return;ensurePICatArray();S.piCategories[i]=n;
   // Update all PIs with old category name
   let cnt=0;Object.values(S.piPool).forEach(pool=>{if(Array.isArray(pool))pool.forEach(p=>{if(p.category===old){p.category=n;cnt++;}});});
   addL('PI카테고리변경',old+'→'+n+' ('+cnt+'개 PI)');save();renderAdm();}
@@ -1223,7 +1223,7 @@ function delPICat(i){const cats=PI_CATEGORIES();const name=cats[i];if(cats.lengt
   // Check if any PI uses this category
   let used=0;Object.values(S.piPool).forEach(pool=>{if(Array.isArray(pool))pool.forEach(p=>{if(p.category===name)used++;});});
   if(used&&!confirm('"'+name+'" 카테고리에 '+used+'개 PI가 있습니다. 해당 PI는 "기타"로 변경됩니다. 삭제하시겠습니까?'))return;
-  if(!S.piCategories)S.piCategories=[...PI_DEF_CATEGORIES];S.piCategories.splice(i,1);
+  ensurePICatArray();S.piCategories.splice(i,1);
   const fallback=S.piCategories[0]||'기타';
   Object.values(S.piPool).forEach(pool=>{if(Array.isArray(pool))pool.forEach(p=>{if(p.category===name)p.category=fallback;});});
   addL('PI카테고리삭제',name);save();renderAdm();}
@@ -2018,7 +2018,13 @@ document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='z'&&!e.shiftKey){
 // ── PI POOL ──
 const PI_DEF_CATEGORIES=['재무','성장','효율','고객','인력','기술','ESG','기타'];
 const PI_STATUS=['등록','검토중','확정','보류'];
-function PI_CATEGORIES(){return(S.piCategories&&S.piCategories.length)?S.piCategories:PI_DEF_CATEGORIES;}
+function PI_CATEGORIES(){
+  let c=S.piCategories;
+  // Fix Firebase object→array conversion
+  if(c&&!Array.isArray(c)&&typeof c==='object'){const ks=Object.keys(c);if(ks.length&&ks.every(k=>/^\d+$/.test(k))){c=ks.sort((a,b)=>+a-+b).map(k=>c[k]);S.piCategories=c;}else{c=null;S.piCategories=null;}}
+  return(c&&c.length)?c:PI_DEF_CATEGORIES;
+}
+function ensurePICatArray(){if(!S.piCategories||!Array.isArray(S.piCategories))S.piCategories=[...PI_CATEGORIES()];}
 
 function renderPI(){
   const tabsEl=document.getElementById('pi-org-tabs');
