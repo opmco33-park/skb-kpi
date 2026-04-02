@@ -188,6 +188,11 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
 @media(max-width:900px){.kl,.adm{flex-direction:column;grid-template-columns:1fr;height:auto}.kl-side,.adm-n{width:100%;border-right:none;border-bottom:1px solid var(--bd);max-height:150px}.hdr{flex-wrap:wrap;height:auto;padding:7px 14px;gap:5px}.pg{padding:12px 10px}.slvl{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.slvl{grid-template-columns:repeat(2,1fr)}.logo-sub{display:none}}
 @media print{body{background:#fff!important;color:#000!important}.hdr,.tabs,.btn{display:none!important}.pg{display:block!important}.pg:not(.on){display:none!important}}
+
+.piw-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--bg);cursor:pointer}
+.piw-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--bg);cursor:pointer}
+.piw-slider::-webkit-slider-runnable-track{height:3px;background:var(--bd);border-radius:2px}
+.piw-slider::-moz-range-track{height:3px;background:var(--bd);border-radius:2px}
 </style>
 </head>
 <body>
@@ -1417,7 +1422,8 @@ function generatePPTInBrowser(sel,orgData){
   .rpt-tbl-sm th,.rpt-tbl-sm td{padding:4px 8px}
   @media print{body{background:#fff}.rpt-slide{box-shadow:none;margin:0;border-radius:0;width:100%}}
   .no-print{text-align:center;padding:16px}
-  </style></head><body>
+  
+</style></head><body>
   <div class="no-print" style="background:#1e293b;color:#fff;padding:14px 20px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center">
     <span style="font-weight:700">📑 KPI 보고서 미리보기 — ${sel.length}개 장표</span>
     <div><button onclick="document.querySelectorAll('.no-print').forEach(e=>e.style.display='none');window.print();document.querySelectorAll('.no-print').forEach(e=>e.style.display='')" style="padding:8px 20px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">🖨️ 인쇄 / PDF 저장</button></div>
@@ -2122,65 +2128,112 @@ function renderPIScore(){
   const contentEl=document.getElementById('pi-content');
   const g=S.piOrg;const pool=S.piPool[g]||[];const ed=canEdit(g);
   const label=S.kpi[g]?.label||g;
-  const w=piWeights();
-
-  // Rank by score
+  const w=piWeights();const wSum=Object.values(w).reduce((a,v)=>a+v,0);
   const scored=pool.map(item=>({...item,_sc:piTotalScore(item)})).sort((a,b)=>(b._sc||0)-(a._sc||0));
 
-  let h=`<div style="margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <span style="font-size:15px;font-weight:900">${E(label)} Scoring</span>
-      ${S.isAdmin?`<button class="btn" style="font-size:9px;padding:3px 8px" onclick="editPIWeights()">⚖ 비중 조정</button>`:''}
-    </div>
-    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${PI_SCORE_INDICES.map(idx=>`<span style="font-size:8px;padding:2px 6px;border-radius:3px;background:var(--sec);border:1px solid var(--bd)"><b>${idx.l}</b> ${w[idx.k]}%</span>`).join('')}</div>
-  </div>`;
+  // Weight sliders panel - compact single row
+  let sliderHtml='';
+  if(S.isAdmin){
+    sliderHtml='<div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;margin-bottom:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<span style="font-size:9px;font-weight:800;color:var(--t3);white-space:nowrap">⚖ 비중</span>'
+      +'<div style="display:flex;gap:10px;flex:1;flex-wrap:nowrap;overflow-x:auto">';
+    PI_SCORE_INDICES.forEach(idx=>{
+      const v=w[idx.k]||0;
+      sliderHtml+='<div style="display:flex;align-items:center;gap:3px;min-width:0;flex:1">'
+        +'<span style="font-size:8px;font-weight:700;color:var(--t2);white-space:nowrap">'+idx.l.slice(0,2)+'</span>'
+        +'<input type="range" min="0" max="50" value="'+v+'" data-k="'+idx.k+'" class="piw-slider" style="flex:1;min-width:40px;height:12px;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer;margin:0">'
+        +'<span style="font-size:9px;font-weight:800;color:var(--blue);min-width:24px;text-align:right" id="piw-val-'+idx.k+'">'+v+'%</span></div>';
+    });
+    sliderHtml+='</div>'
+      +'<div style="display:flex;align-items:center;gap:4px;margin-left:4px">'
+      +'<div style="width:40px;height:3px;background:var(--bd);border-radius:2px;overflow:hidden"><div id="piw-bar-fill" style="height:100%;border-radius:2px;transition:width .2s,background .2s;width:'+Math.min(wSum,100)+'%;background:'+(wSum===100?'var(--green)':wSum>100?'var(--red)':'var(--amber)')+'"></div></div>'
+      +'<span id="piw-total" style="font-size:9px;font-weight:800;color:'+(wSum===100?'var(--green)':wSum>100?'var(--red)':'var(--amber)')+'">'+wSum+'%</span></div></div></div>';
+  }else{
+    sliderHtml='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">'+PI_SCORE_INDICES.map(idx=>'<span style="font-size:8px;padding:2px 6px;border-radius:3px;background:var(--sec);border:1px solid var(--bd)"><b>'+idx.l+'</b> '+(w[idx.k]||0)+'%</span>').join('')+'</div>';
+  }
+
+  let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<span style="font-size:15px;font-weight:900">'+E(label)+' Scoring</span></div>'
+    +sliderHtml;
 
   if(!scored.length){
-    h+=`<div style="text-align:center;padding:20px;color:var(--t3);font-size:11px">등록된 PI 없음</div>`;
+    h+='<div style="text-align:center;padding:20px;color:var(--t3);font-size:11px">등록된 PI 없음</div>';
   }else{
-    h+=`<div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="width:30px">#</th><th style="text-align:left">지수명</th>${PI_SCORE_INDICES.map(idx=>`<th style="width:60px" title="${idx.d}">${idx.l.slice(0,2)}</th>`).join('')}<th style="width:60px">종합</th>${ed?'<th style="width:40px"></th>':''}</tr></thead><tbody>`;
+    let ths=PI_SCORE_INDICES.map(idx=>'<th style="width:80px" title="'+E(idx.d)+'">'+idx.l.slice(0,2)+'</th>').join('');
+    h+='<div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="width:30px">#</th><th style="text-align:left">지수명</th>'+ths+'<th style="width:50px">종합</th></tr></thead><tbody>';
     scored.forEach((item,rank)=>{
       const sc=item.scores||{};
-      h+=`<tr><td style="text-align:center;font-weight:900;color:${rank<3?'var(--amber)':'var(--t3)'}">${rank+1}</td><td style="font-weight:700;font-size:11px"><div>${E(item.name)}</div><div style="font-size:8px;color:var(--t3)">${E(item.category||'')} ${item.unit?'· '+E(item.unit):''}</div></td>`;
+      h+='<tr><td style="text-align:center;font-weight:900;font-size:13px;color:'+(rank<3?'var(--amber)':'var(--t3)')+'">'+String(rank+1)+'</td><td style="font-weight:700;font-size:11px"><div>'+E(item.name)+'</div><div style="font-size:8px;color:var(--t3)">'+E(item.category||'')+' '+(item.unit?'· '+E(item.unit):'')+'</div></td>';
       PI_SCORE_INDICES.forEach(idx=>{
-        const v=sc[idx.k];
-        h+=`<td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:${v>=4?'var(--green)':v>=3?'var(--amber)':v?'var(--red)':'var(--t3)'}">${v||'-'}</td>`;
+        const v=sc[idx.k]||0;
+        let dots='';
+        for(let n=1;n<=5;n++){
+          const on=n<=v;const clr=on?(v>=4?'var(--green)':v>=3?'var(--amber)':'var(--red)'):'var(--bd)';
+          dots+='<div style="width:12px;height:12px;border-radius:2px;cursor:'+(ed?'pointer':'default')+';background:'+clr+';transition:background .1s"'
+            +(ed?' onclick="setInlineScore(\''+E(g)+'\',\''+item.id+'\',\''+idx.k+'\','+n+')" onmouseenter="previewScore(this,'+n+','+v+')" onmouseleave="resetPreview(this,'+n+','+v+')"':'')
+            +' title="'+idx.l+': '+n+'점"></div>';
+        }
+        h+='<td style="text-align:center;padding:4px 2px"><div style="display:inline-flex;gap:1px">'+dots+'</div></td>';
       });
       const total=item._sc;
-      h+=`<td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:900;color:${piScoreColor(total)}">${total!=null?total.toFixed(1):'-'}</td>`;
-      h+=ed?`<td style="text-align:center"><button style="border:none;background:0;color:var(--cyan);font-size:9px;cursor:pointer" onclick="editPI('${E(g)}','${item.id}')" title="점수 수정">✏</button></td>`:'';
-      h+=`</tr>`;
+      h+='<td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:13px;font-weight:900;color:'+piScoreColor(total)+'">'+(total!=null?total.toFixed(1):'-')+'</td></tr>';
     });
-    h+=`</tbody></table></div>`;
+    h+='</tbody></table></div>';
   }
   contentEl.innerHTML=h;
+
+  // Attach slider events
+  if(S.isAdmin){
+    document.querySelectorAll('.piw-slider').forEach(inp=>{
+      inp.addEventListener('input',function(){
+        const k=this.dataset.k;const v=Number(this.value);
+        if(!S.piWeights)S.piWeights={...PI_DEF_WEIGHTS};
+        S.piWeights[k]=v;
+        document.getElementById('piw-val-'+k).textContent=v+'%';
+        // Update bar
+        const total=Object.values(S.piWeights).reduce((a,b)=>a+b,0);
+        const ok=total===100;
+        document.getElementById('piw-total').textContent=total+'%';
+        document.getElementById('piw-total').style.color=ok?'var(--green)':total>100?'var(--red)':'var(--amber)';
+        document.getElementById('piw-bar-fill').style.width=Math.min(total,100)+'%';
+        document.getElementById('piw-bar-fill').style.background=ok?'var(--green)':total>100?'var(--red)':'var(--amber)';
+        // Recalc scores in table
+        document.querySelectorAll('[id^="psc-"]').forEach(cell=>{
+          const piId=cell.id.replace('psc-','');
+          const pi=(S.piPool[S.piOrg]||[]).find(p=>p.id===piId);
+          if(pi){const t=piTotalScore(pi);cell.textContent=t!=null?t.toFixed(1):'-';cell.style.color=piScoreColor(t);}
+        });
+      });
+      inp.addEventListener('change',function(){save();renderPIScore();});
+    });
+  }
 }
 
-function editPIWeights(){
-  const w=piWeights();
-  const m=document.createElement('div');m.className='modal';m.id='piw-m';m.style.display='flex';
-  m.onclick=e=>{if(e.target===m)m.remove();};
-  m.innerHTML=`<div class="mbox mbox-md">
-    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px"><span>⚖ 평가 비중 조정</span><button class="btn" onclick="document.getElementById('piw-m').remove()">✕</button></div>
-    <div class="adm-ss" style="margin-bottom:12px">각 평가 인덱스의 비중을 조절합니다. 합계가 100%가 되어야 합니다.</div>
-    ${PI_SCORE_INDICES.map(idx=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1"><div style="font-size:11px;font-weight:700">${idx.l}</div><div style="font-size:9px;color:var(--t3)">${idx.d}</div></div><input type="number" class="sinp piw-inp" data-k="${idx.k}" value="${w[idx.k]}" min="0" max="100" style="width:60px;text-align:center;font-size:12px"/><span style="font-size:10px;color:var(--t3)">%</span></div>`).join('')}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)"><span style="font-size:11px;font-weight:700">합계: <span id="piw-sum" style="color:var(--blue)">100</span>%</span><div style="display:flex;gap:6px"><button class="btn" onclick="document.getElementById('piw-m').remove()">취소</button><button class="btn btn-p" onclick="savePIWeights()">저장</button></div></div>
-  </div>`;
-  document.body.appendChild(m);
-  // Live sum
-  document.querySelectorAll('.piw-inp').forEach(inp=>{inp.addEventListener('input',()=>{
-    let s=0;document.querySelectorAll('.piw-inp').forEach(i=>s+=parseInt(i.value)||0);
-    const el=document.getElementById('piw-sum');el.textContent=s;el.style.color=s===100?'var(--green)':'var(--red)';
-  });});
+function setInlineScore(g,piId,idxKey,val){
+  const pool=S.piPool[g];if(!Array.isArray(pool))return;
+  const item=pool.find(p=>p.id===piId);if(!item)return;
+  if(!item.scores)item.scores={};
+  // Toggle: click same value to clear
+  if(item.scores[idxKey]===val)item.scores[idxKey]=0;
+  else item.scores[idxKey]=val;
+  save();
+  renderPIScore();
 }
 
-function savePIWeights(){
-  const w={};let sum=0;
-  document.querySelectorAll('.piw-inp').forEach(inp=>{const v=parseInt(inp.value)||0;w[inp.dataset.k]=v;sum+=v;});
-  if(sum!==100){toast('합계가 100%여야 합니다 (현재 '+sum+'%)','e');return;}
-  S.piWeights=w;save();
-  document.getElementById('piw-m')?.remove();
-  renderPI();toast('비중 저장 완료','s');
+function previewScore(el,n,current){
+  const row=el.parentElement;if(!row)return;
+  const dots=row.children;
+  for(let i=0;i<5;i++){
+    dots[i].style.background=i<n?'var(--blue)':'var(--bd)';
+  }
+}
+function resetPreview(el,n,current){
+  const row=el.parentElement;if(!row)return;
+  const dots=row.children;
+  for(let i=0;i<5;i++){
+    dots[i].style.background=i<current?(current>=4?'var(--green)':current>=3?'var(--amber)':'var(--red)'):'var(--bd)';
+  }
 }
 
 function promoteToKPI(g,piId){
