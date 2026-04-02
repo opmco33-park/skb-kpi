@@ -189,10 +189,11 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
 @media(max-width:600px){.slvl{grid-template-columns:repeat(2,1fr)}.logo-sub{display:none}}
 @media print{body{background:#fff!important;color:#000!important}.hdr,.tabs,.btn{display:none!important}.pg{display:block!important}.pg:not(.on){display:none!important}}
 
-.piw-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--bg);cursor:pointer}
+.piw-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--bg);cursor:pointer;margin-top:-5.5px}
 .piw-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--bg);cursor:pointer}
 .piw-slider::-webkit-slider-runnable-track{height:3px;background:var(--bd);border-radius:2px}
 .piw-slider::-moz-range-track{height:3px;background:var(--bd);border-radius:2px}
+.piw-slider{overflow:visible}
 </style>
 </head>
 <body>
@@ -208,13 +209,20 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
     <button class="tab" onclick="go('admin')" id="t-admin" style="display:none">🛡️ 관리자</button>
   </div>
   <div class="hdr-r">
-    <span id="hb-avatar" style="display:none;font-size:20px;line-height:1"></span>
     <span id="fb-status" style="font-size:9px;padding:2px 6px;border-radius:3px;display:none"></span>
-    <span class="badge badge-a" id="hb-role" style="display:none"></span>
-    <span class="badge badge-u" id="hb-user" style="display:none"></span>
-    <button class="btn" onclick="toggleTheme()" id="thBtn">☀️ 라이트</button>
-    <button class="btn" id="pwChangeBtn" onclick="openPwChange()" style="display:none">🔑 PW변경</button>
-    <button class="btn" id="logoutBtn" onclick="doLogoutAll()" style="display:none">🚪 로그아웃</button>
+    <div id="hb-user-chip" style="display:none;position:relative">
+      <div onclick="document.getElementById('hb-menu').style.display=document.getElementById('hb-menu').style.display==='block'?'none':'block'" style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sec);cursor:pointer;user-select:none">
+        <span id="hb-avatar" style="font-size:16px;line-height:1"></span>
+        <span id="hb-name" style="font-size:10px;font-weight:700;color:var(--t1);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <span id="hb-role" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px"></span>
+      </div>
+      <div id="hb-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:var(--card);border:1px solid var(--bd);border-radius:7px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;min-width:120px;padding:4px;overflow:hidden">
+        <button class="btn" style="width:100%;text-align:left;font-size:10px;padding:6px 8px;border:none;border-radius:4px" onclick="toggleTheme();document.getElementById('hb-menu').style.display='none'" id="thBtn">☀️ 라이트</button>
+        <button class="btn" style="width:100%;text-align:left;font-size:10px;padding:6px 8px;border:none;border-radius:4px" onclick="openPwChange();document.getElementById('hb-menu').style.display='none'">🔑 비밀번호</button>
+        <div style="height:1px;background:var(--bd);margin:2px 0"></div>
+        <button class="btn" style="width:100%;text-align:left;font-size:10px;padding:6px 8px;border:none;border-radius:4px;color:var(--red)" onclick="doLogoutAll()">🚪 로그아웃</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -440,6 +448,7 @@ const S={
   piOrg:null,
   piCategories:null, // null = use defaults
   piWeights:null, // null = use defaults
+  piIndexLabels:null, // custom labels for scoring indices
   // EmailJS config {serviceId, templateId, publicKey}
   emailjs:null,
 };
@@ -504,7 +513,7 @@ async function ensureAdminPwH(){
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
   if(changed){
     // Save to localStorage only (not Firebase) during init
-    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   }
 }
 
@@ -540,22 +549,21 @@ function doLogoutAll(){
 
 function updateAuthUI(){
   const acc=S.curAccount;
-  const avatarEl=document.getElementById('hb-avatar');
-  const roleEl=document.getElementById('hb-role');
-  const userEl=document.getElementById('hb-user');
-  const logoutEl=document.getElementById('logoutBtn');
+  const chip=document.getElementById('hb-user-chip');
   const adminTab=document.getElementById('t-admin');
   if(acc){
-    const roleLabels={admin:'관리자',manager:'담당자',viewer:'열람자'};
-    const roleClass={admin:'badge-a',manager:'badge-u',viewer:'badge-u'};
-    avatarEl.style.display='';avatarEl.textContent=acc.avatar||'👤';
-    roleEl.style.display='';roleEl.textContent=roleLabels[acc.role]||acc.role;roleEl.className='badge '+(roleClass[acc.role]||'badge-u');
-    userEl.style.display='';userEl.textContent=acc.name+(acc.orgs?.length?' · '+acc.orgs.join(','):'');
-    logoutEl.style.display='';
-    document.getElementById('pwChangeBtn').style.display='';
+    const rlbl={admin:'A',manager:'M',viewer:'V'};
+    const rclr={admin:'var(--red)',manager:'var(--amber)',viewer:'var(--green)'};
+    chip.style.display='';
+    document.getElementById('hb-avatar').textContent=acc.avatar||'👤';
+    document.getElementById('hb-name').textContent=acc.name;
+    const roleEl=document.getElementById('hb-role');
+    roleEl.textContent=rlbl[acc.role]||'?';
+    roleEl.style.background=rclr[acc.role]||'var(--t3)';roleEl.style.color='#fff';
     adminTab.style.display=acc.role==='admin'?'':'none';
   }else{
-    avatarEl.style.display='none';roleEl.style.display='none';userEl.style.display='none';logoutEl.style.display='none';adminTab.style.display='none';document.getElementById('pwChangeBtn').style.display='none';
+    chip.style.display='none';adminTab.style.display='none';
+    document.getElementById('hb-menu').style.display='none';
   }
 }
 
@@ -568,8 +576,8 @@ function updBar(){}
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
     // Fix Firebase array-to-object conversion in nested structures
     Object.values(d.kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;if(un.sections&&!Array.isArray(un.sections)){const ks=Object.keys(un.sections);if(ks.every(k=>/^\d+$/.test(k)))un.sections=ks.sort((a,b)=>+a-+b).map(k=>un.sections[k]);else un.sections=[];}if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{if(sec.items&&!Array.isArray(sec.items)){const ks=Object.keys(sec.items);if(ks.every(k=>/^\d+$/.test(k)))sec.items=ks.sort((a,b)=>+a-+b).map(k=>sec.items[k]);else sec.items=[];}if(!Array.isArray(sec.items))sec.items=[];});});});
     Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
@@ -1217,8 +1225,29 @@ function aPIMgr(el){
     <button class="btn btn-p" onclick="piBulkStatusChange()">상태 일괄변경</button>
     <button class="btn" onclick="piExportCSV()">📊 PI 전체 내보내기</button>
     <button class="btn btn-d" onclick="piClearAll()">전체 PI 삭제</button>
-  </div></div>`;
+  </div></div>
+
+  <div class="adm-s"><div class="adm-st">📊 Scoring 인덱스 명칭</div>
+  <div class="adm-ss">PI Scoring에 사용되는 5개 평가 인덱스의 명칭과 설명을 변경합니다.</div>
+  <div style="display:grid;gap:6px">${PI_SCORE_INDICES().map(idx=>`<div style="display:flex;gap:6px;align-items:center"><input class="sinp pil-name" data-k="${idx.k}" value="${E(idx.l)}" style="flex:1;font-size:11px;font-weight:700" placeholder="명칭"/><input class="sinp pil-desc" data-k="${idx.k}" value="${E(idx.d)}" style="flex:2;font-size:10px" placeholder="설명"/></div>`).join('')}</div>
+  <div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-p" style="font-size:10px" onclick="savePIIndexLabels()">명칭 저장</button><button class="btn" style="font-size:10px" onclick="resetPIIndexLabels()">기본값 복원</button></div>
+  </div>`;
 }
+
+function savePIIndexLabels(){
+  const labels={};
+  document.querySelectorAll('.pil-name').forEach(inp=>{
+    const k=inp.dataset.k;const name=inp.value.trim();
+    const descInp=document.querySelector('.pil-desc[data-k="'+k+'"]');
+    const desc=descInp?descInp.value.trim():'';
+    const def=PI_SCORE_INDICES_DEF.find(d=>d.k===k);
+    if(name!==def.l||desc!==def.d)labels[k]={l:name||def.l,d:desc||def.d};
+  });
+  S.piIndexLabels=Object.keys(labels).length?labels:null;
+  addL('Scoring명칭변경',Object.values(labels).map(v=>v.l).join(', ')||'기본값');
+  save();renderAdm();toast('명칭 저장 완료','s');
+}
+function resetPIIndexLabels(){if(!confirm('Scoring 인덱스 명칭을 기본값으로 복원하시겠습니까?'))return;S.piIndexLabels=null;addL('Scoring명칭초기화','기본값');save();renderAdm();toast('기본값 복원','s');}
 
 function addPICat(){const n=prompt('새 카테고리 이름');if(!n)return;const cats=PI_CATEGORIES();if(cats.includes(n)){toast('이미 존재','e');return;}ensurePICatArray();S.piCategories.push(n);addL('PI카테고리추가',n);save();renderAdm();}
 function renamePICat(i){const cats=PI_CATEGORIES();const old=cats[i];const n=prompt('카테고리 이름 변경',old);if(!n||n===old)return;ensurePICatArray();S.piCategories[i]=n;
@@ -2015,6 +2044,7 @@ async function doSendCustomMail(){
 // KEYBOARD
 // ══════════════════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='z'&&!e.shiftKey){if(document.activeElement?.tagName==='INPUT'||document.activeElement?.tagName==='TEXTAREA')return;e.preventDefault();undo();}});
+document.addEventListener('click',e=>{const chip=document.getElementById('hb-user-chip');if(chip&&!chip.contains(e.target)){document.getElementById('hb-menu').style.display='none';}});
 
 
 // ══════════════════════════════════════════════════════════════
@@ -2034,13 +2064,17 @@ function PI_CATEGORIES(){
 function ensurePICatArray(){if(!S.piCategories||!Array.isArray(S.piCategories)||!S.piCategories.length)S.piCategories=[...PI_DEF_CATEGORIES];}
 
 // Scoring indices (global standard)
-const PI_SCORE_INDICES=[
+const PI_SCORE_INDICES_DEF=[
   {k:'strategic',l:'전략적 중요도',d:'경영전략/사업목표 연계도'},
   {k:'measurable',l:'측정 가능성',d:'정량적 측정 및 데이터 확보 용이성'},
   {k:'impact',l:'사업 영향도',d:'매출/수익/비용 등 재무적 파급력'},
   {k:'controllable',l:'통제 가능성',d:'조직 자체 노력으로 개선 가능 여부'},
   {k:'timeliness',l:'적시성',d:'해당 연도 내 성과 도출 가능 여부'},
 ];
+function PI_SCORE_INDICES(){
+  const custom=S.piIndexLabels||{};
+  return PI_SCORE_INDICES_DEF.map(idx=>({...idx,l:custom[idx.k]?.l||idx.l,d:custom[idx.k]?.d||idx.d}));
+}
 // Default weights (sum=100)
 const PI_DEF_WEIGHTS={strategic:30,measurable:15,impact:25,controllable:15,timeliness:15};
 
@@ -2048,7 +2082,7 @@ function piWeights(){return S.piWeights||{...PI_DEF_WEIGHTS};}
 function piTotalScore(item){
   const w=piWeights();const sc=item.scores||{};
   let sum=0,wtotal=0;
-  PI_SCORE_INDICES.forEach(idx=>{
+  PI_SCORE_INDICES().forEach(idx=>{
     const v=sc[idx.k];const wt=w[idx.k]||0;
     if(v!=null&&v>0){sum+=v*wt;wtotal+=wt;}
   });
@@ -2138,11 +2172,11 @@ function renderPIScore(){
       +'<div style="display:flex;align-items:center;gap:8px">'
       +'<span style="font-size:9px;font-weight:800;color:var(--t3);white-space:nowrap">⚖ 비중</span>'
       +'<div style="display:flex;gap:10px;flex:1;flex-wrap:nowrap;overflow-x:auto">';
-    PI_SCORE_INDICES.forEach(idx=>{
+    PI_SCORE_INDICES().forEach(idx=>{
       const v=w[idx.k]||0;
       sliderHtml+='<div style="display:flex;align-items:center;gap:3px;min-width:0;flex:1">'
         +'<span style="font-size:8px;font-weight:700;color:var(--t2);white-space:nowrap">'+idx.l.slice(0,2)+'</span>'
-        +'<input type="range" min="0" max="50" value="'+v+'" data-k="'+idx.k+'" class="piw-slider" style="flex:1;min-width:40px;height:12px;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer;margin:0">'
+        +'<input type="range" min="0" max="50" value="'+v+'" data-k="'+idx.k+'" class="piw-slider" style="flex:1;min-width:40px;height:16px;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer;margin:0;overflow:visible">'
         +'<span style="font-size:9px;font-weight:800;color:var(--blue);min-width:24px;text-align:right" id="piw-val-'+idx.k+'">'+v+'%</span></div>';
     });
     sliderHtml+='</div>'
@@ -2150,7 +2184,7 @@ function renderPIScore(){
       +'<div style="width:40px;height:3px;background:var(--bd);border-radius:2px;overflow:hidden"><div id="piw-bar-fill" style="height:100%;border-radius:2px;transition:width .2s,background .2s;width:'+Math.min(wSum,100)+'%;background:'+(wSum===100?'var(--green)':wSum>100?'var(--red)':'var(--amber)')+'"></div></div>'
       +'<span id="piw-total" style="font-size:9px;font-weight:800;color:'+(wSum===100?'var(--green)':wSum>100?'var(--red)':'var(--amber)')+'">'+wSum+'%</span></div></div></div>';
   }else{
-    sliderHtml='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">'+PI_SCORE_INDICES.map(idx=>'<span style="font-size:8px;padding:2px 6px;border-radius:3px;background:var(--sec);border:1px solid var(--bd)"><b>'+idx.l+'</b> '+(w[idx.k]||0)+'%</span>').join('')+'</div>';
+    sliderHtml='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">'+PI_SCORE_INDICES().map(idx=>'<span style="font-size:8px;padding:2px 6px;border-radius:3px;background:var(--sec);border:1px solid var(--bd)"><b>'+idx.l+'</b> '+(w[idx.k]||0)+'%</span>').join('')+'</div>';
   }
 
   let h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
@@ -2160,12 +2194,12 @@ function renderPIScore(){
   if(!scored.length){
     h+='<div style="text-align:center;padding:20px;color:var(--t3);font-size:11px">등록된 PI 없음</div>';
   }else{
-    let ths=PI_SCORE_INDICES.map(idx=>'<th style="width:80px" title="'+E(idx.d)+'">'+idx.l.slice(0,2)+'</th>').join('');
+    let ths=PI_SCORE_INDICES().map(idx=>'<th style="width:80px" title="'+E(idx.d)+'">'+idx.l.slice(0,2)+'</th>').join('');
     h+='<div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="width:30px">#</th><th style="text-align:left">지수명</th>'+ths+'<th style="width:50px">종합</th></tr></thead><tbody>';
     scored.forEach((item,rank)=>{
       const sc=item.scores||{};
       h+='<tr><td style="text-align:center;font-weight:900;font-size:13px;color:'+(rank<3?'var(--amber)':'var(--t3)')+'">'+String(rank+1)+'</td><td style="font-weight:700;font-size:11px"><div>'+E(item.name)+'</div><div style="font-size:8px;color:var(--t3)">'+E(item.category||'')+' '+(item.unit?'· '+E(item.unit):'')+'</div></td>';
-      PI_SCORE_INDICES.forEach(idx=>{
+      PI_SCORE_INDICES().forEach(idx=>{
         const v=sc[idx.k]||0;
         let dots='';
         for(let n=1;n<=5;n++){
@@ -2311,7 +2345,7 @@ function openPIEdit(g,id){
     <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">비고</div><input class="sinp" id="pi-note" value="${E(item.note||'')}" placeholder="추가 설명" style="font-size:11px"/></div>
     <div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:8px 10px;margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:6px">📊 평가 점수 (5점 만점)</div>
-      ${PI_SCORE_INDICES.map(idx=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:10px;font-weight:600;flex:1" title="${idx.d}">${idx.l}</span><div style="display:flex;gap:2px" id="pi-sc-${idx.k}">${[1,2,3,4,5].map(v=>`<button type="button" style="width:22px;height:22px;border-radius:4px;border:1px solid ${(sc[idx.k]||0)>=v?'var(--blue)':'var(--bd)'};background:${(sc[idx.k]||0)>=v?'var(--blue)':'transparent'};color:${(sc[idx.k]||0)>=v?'#fff':'var(--t3)'};font-size:9px;font-weight:700;cursor:pointer" onclick="setPIStar('${idx.k}',${v})">${v}</button>`).join('')}</div></div>`).join('')}
+      ${PI_SCORE_INDICES().map(idx=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:10px;font-weight:600;flex:1" title="${idx.d}">${idx.l}</span><div style="display:flex;gap:2px" id="pi-sc-${idx.k}">${[1,2,3,4,5].map(v=>`<button type="button" style="width:22px;height:22px;border-radius:4px;border:1px solid ${(sc[idx.k]||0)>=v?'var(--blue)':'var(--bd)'};background:${(sc[idx.k]||0)>=v?'var(--blue)':'transparent'};color:${(sc[idx.k]||0)>=v?'#fff':'var(--t3)'};font-size:9px;font-weight:700;cursor:pointer" onclick="setPIStar('${idx.k}',${v})">${v}</button>`).join('')}</div></div>`).join('')}
     </div>
     <div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('pi-edit-m').remove()">취소</button><button class="btn btn-p" onclick="savePIEdit()">저장</button></div>
   </div>`;
@@ -2338,7 +2372,7 @@ function savePIEdit(){
   if(!nm){toast('지수명을 입력하세요','e');return;}
   // Collect scores
   const scores={};
-  PI_SCORE_INDICES.forEach(idx=>{
+  PI_SCORE_INDICES().forEach(idx=>{
     const container=document.getElementById('pi-sc-'+idx.k);
     const v=container?parseInt(container.dataset.val)||0:0;
     if(v>0)scores[idx.k]=v;
@@ -2552,6 +2586,7 @@ function applyRemoteData(d){
   if(d.log&&Array.isArray(d.log)){const c=d.log.filter(x=>x&&x!=='_');if(c.length)S.log=c;}
   if(d.pi){const c=stripP(d.pi);if(Object.keys(c).length)S.piPool=c;}
   if(d.piw&&typeof d.piw==='object'){const c={...d.piw};delete c._;if(Object.keys(c).length)S.piWeights=c;}
+  if(d.pil&&typeof d.pil==='object'){const c={...d.pil};delete c._;if(Object.keys(c).length)S.piIndexLabels=c;}
   if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
@@ -2568,7 +2603,7 @@ function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},ej:S.emailjs||{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},ej:S.emailjs||{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
