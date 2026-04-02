@@ -434,6 +434,7 @@ const S={
   piPool:{},
   piOrg:null,
   piCategories:null, // null = use defaults
+  piWeights:null, // null = use defaults
   // EmailJS config {serviceId, templateId, publicKey}
   emailjs:null,
 };
@@ -498,7 +499,7 @@ async function ensureAdminPwH(){
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
   if(changed){
     // Save to localStorage only (not Firebase) during init
-    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   }
 }
 
@@ -562,8 +563,8 @@ function updBar(){}
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
     // Fix Firebase array-to-object conversion in nested structures
     Object.values(d.kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;if(un.sections&&!Array.isArray(un.sections)){const ks=Object.keys(un.sections);if(ks.every(k=>/^\d+$/.test(k)))un.sections=ks.sort((a,b)=>+a-+b).map(k=>un.sections[k]);else un.sections=[];}if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{if(sec.items&&!Array.isArray(sec.items)){const ks=Object.keys(sec.items);if(ks.every(k=>/^\d+$/.test(k)))sec.items=ks.sort((a,b)=>+a-+b).map(k=>sec.items[k]);else sec.items=[];}if(!Array.isArray(sec.items))sec.items=[];});});});
     Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
@@ -2026,53 +2027,88 @@ function PI_CATEGORIES(){
 }
 function ensurePICatArray(){if(!S.piCategories||!Array.isArray(S.piCategories)||!S.piCategories.length)S.piCategories=[...PI_DEF_CATEGORIES];}
 
+// Scoring indices (global standard)
+const PI_SCORE_INDICES=[
+  {k:'strategic',l:'전략적 중요도',d:'경영전략/사업목표 연계도'},
+  {k:'measurable',l:'측정 가능성',d:'정량적 측정 및 데이터 확보 용이성'},
+  {k:'impact',l:'사업 영향도',d:'매출/수익/비용 등 재무적 파급력'},
+  {k:'controllable',l:'통제 가능성',d:'조직 자체 노력으로 개선 가능 여부'},
+  {k:'timeliness',l:'적시성',d:'해당 연도 내 성과 도출 가능 여부'},
+];
+// Default weights (sum=100)
+const PI_DEF_WEIGHTS={strategic:30,measurable:15,impact:25,controllable:15,timeliness:15};
+
+function piWeights(){return S.piWeights||{...PI_DEF_WEIGHTS};}
+function piTotalScore(item){
+  const w=piWeights();const sc=item.scores||{};
+  let sum=0,wtotal=0;
+  PI_SCORE_INDICES.forEach(idx=>{
+    const v=sc[idx.k];const wt=w[idx.k]||0;
+    if(v!=null&&v>0){sum+=v*wt;wtotal+=wt;}
+  });
+  return wtotal>0?Math.round(sum/wtotal*20)/1:null; // 5점 만점 → 100점 환산 후 /1
+}
+function piScoreDisp(item){
+  const t=piTotalScore(item);
+  return t!=null?t.toFixed(1):'-';
+}
+function piScoreColor(t){
+  if(t==null)return'var(--t3)';
+  if(t>=4)return'var(--green)';if(t>=3)return'var(--amber)';return'var(--red)';
+}
+
 function renderPI(){
   const tabsEl=document.getElementById('pi-org-tabs');
   const contentEl=document.getElementById('pi-content');
   const vo=visibleOrgs().filter(g=>g!=='전사KPI');
   if(!vo.length){tabsEl.innerHTML='';contentEl.innerHTML='<div style="text-align:center;padding:50px;color:var(--t3)"><div style="font-size:42px;margin-bottom:14px">📌</div><div style="font-size:15px;font-weight:800;color:var(--t2)">조직이 없습니다</div></div>';return;}
   if(!S.piOrg||!vo.includes(S.piOrg))S.piOrg=vo[0];
-  tabsEl.innerHTML=vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('');
+  // Tabs: org buttons + mode toggle
+  if(!S._piMode)S._piMode='pool';
+  tabsEl.innerHTML=`<div style="display:flex;gap:5px;flex-wrap:wrap;flex:1">${vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div style="display:flex;gap:3px"><button class="btn${S._piMode==='pool'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='pool';renderPI()">Pool</button><button class="btn${S._piMode==='score'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='score';renderPI()">Scoring</button></div>`;
+
+  if(S._piMode==='score')return renderPIScore();
+  return renderPIPool();
+}
+
+function renderPIPool(){
+  const contentEl=document.getElementById('pi-content');
   const g=S.piOrg;const pool=S.piPool[g]||[];const ed=canEdit(g);
   const label=S.kpi[g]?.label||g;
 
-  // Cross-org map
   const piOrgMap={};
   ordKeys().filter(og=>og!=='전사KPI').forEach(og=>{
     const p=S.piPool[og];if(!Array.isArray(p))return;
     p.forEach(item=>{if(!piOrgMap[item.name])piOrgMap[item.name]=new Set();piOrgMap[item.name].add(S.kpi[og]?.label||og);});
   });
 
-  // Group by category
   const grouped={};PI_CATEGORIES().forEach(c=>grouped[c]=[]);
   pool.forEach(item=>{const c=item.category||'기타';if(!grouped[c])grouped[c]=[];grouped[c].push(item);});
 
-  const confirmed=pool.filter(p=>p.status==='확정').length;
-  const reviewing=pool.filter(p=>p.status==='검토중').length;
-
-  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-    <div><span style="font-size:16px;font-weight:900">${E(label)}</span><span style="font-size:11px;color:var(--t3);margin-left:8px">${pool.length}개</span><span style="font-size:10px;color:var(--green);margin-left:6px">확정 ${confirmed}</span><span style="font-size:10px;color:var(--amber);margin-left:4px">검토 ${reviewing}</span></div>
-    ${ed?`<button class="btn btn-p" style="font-size:10px" onclick="addPI('${E(g)}')">+ PI</button>`:''}
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div><span style="font-size:15px;font-weight:900">${E(label)}</span><span style="font-size:10px;color:var(--t3);margin-left:6px">${pool.length}개</span></div>
+    ${ed?`<div style="display:flex;gap:4px"><button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="addPI('${E(g)}')">+ PI</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="bulkAddPI('${E(g)}')">⬆ 일괄등록</button></div>`:''}
   </div>`;
 
   if(!pool.length){
-    h+=`<div style="text-align:center;padding:30px;color:var(--t3);font-size:11px">등록된 PI 없음${ed?' — 위 버튼으로 추가':''}</div>`;
+    h+=`<div style="text-align:center;padding:20px;color:var(--t3);font-size:11px">등록된 PI 없음</div>`;
   }else{
     PI_CATEGORIES().forEach(cat=>{
       const items=grouped[cat];if(!items||!items.length)return;
       const catDot=cat==='재무'?'f':cat==='고객'||cat==='ESG'?'c':'s';
-      h+=`<div style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:5px;padding:4px 0;margin-bottom:4px"><div class="dot dot-${catDot}"></div><span style="font-size:11px;font-weight:800">${cat}</span><span style="font-size:9px;color:var(--t3)">${items.length}</span></div>`;
+      h+=`<div style="margin-bottom:6px"><div style="display:flex;align-items:center;gap:4px;padding:2px 0"><div class="dot dot-${catDot}"></div><span style="font-size:10px;font-weight:800">${cat}</span><span style="font-size:8px;color:var(--t3)">${items.length}</span></div>`;
       items.forEach(item=>{
         const stC={등록:'var(--t3)',검토중:'var(--amber)',확정:'var(--green)',보류:'var(--red)'}[item.status]||'var(--t3)';
         const orgs=[...(piOrgMap[item.name]||[])];
-        const orgTags=orgs.length>1?orgs.map(o=>`<span style="padding:0 4px;border-radius:2px;font-size:7px;font-weight:700;background:rgba(96,165,250,.08);color:var(--blue);border:1px solid rgba(96,165,250,.15)">${E(o)}</span>`).join(' '):'';
-        h+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid rgba(100,120,160,.06);font-size:11px" class="pi-row">
-          <span style="width:6px;height:6px;border-radius:50%;background:${stC};flex-shrink:0"></span>
+        const orgTags=orgs.length>1?orgs.map(o=>`<span style="padding:0 3px;border-radius:2px;font-size:7px;font-weight:600;background:rgba(96,165,250,.08);color:var(--blue)">${E(o)}</span>`).join(' '):'';
+        const sc=piTotalScore(item);const scDisp=sc!=null?sc.toFixed(1):'';
+        h+=`<div style="display:flex;align-items:center;gap:5px;padding:3px 6px;border-bottom:1px solid rgba(100,120,160,.04);font-size:10px">
+          <span style="width:5px;height:5px;border-radius:50%;background:${stC};flex-shrink:0"></span>
           <span style="font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${E(item.name)}">${E(item.name)}</span>
-          ${item.unit?`<span style="color:var(--t3);font-size:9px">${E(item.unit)}</span>`:''}
-          ${item.target?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t2)">${E(item.target)}</span>`:''}
+          ${item.unit?`<span style="color:var(--t3);font-size:8px">${E(item.unit)}</span>`:''}
+          ${scDisp?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:${piScoreColor(sc)}" title="종합점수">${scDisp}</span>`:''}
           ${orgTags}
-          ${ed?`<span style="display:flex;gap:2px;flex-shrink:0"><button style="border:none;background:0;color:var(--cyan);font-size:9px;cursor:pointer;padding:1px 3px" onclick="promoteToKPI('${E(g)}','${item.id}')" title="KPI로 격상">⬆</button><button style="border:none;background:0;color:var(--t3);font-size:9px;cursor:pointer;padding:1px 3px" onclick="editPI('${E(g)}','${item.id}')" title="수정">✏</button><button style="border:none;background:0;color:var(--red);font-size:9px;cursor:pointer;padding:1px 3px" onclick="delPI('${E(g)}','${item.id}')" title="삭제">✕</button></span>`:''}
+          ${ed?`<span style="display:flex;gap:1px;flex-shrink:0"><button style="border:none;background:0;color:var(--cyan);font-size:8px;cursor:pointer;padding:0 2px" onclick="promoteToKPI('${E(g)}','${item.id}')" title="KPI 격상">⬆</button><button style="border:none;background:0;color:var(--t3);font-size:8px;cursor:pointer;padding:0 2px" onclick="editPI('${E(g)}','${item.id}')" title="수정">✏</button><button style="border:none;background:0;color:var(--red);font-size:8px;cursor:pointer;padding:0 2px" onclick="delPI('${E(g)}','${item.id}')" title="삭제">✕</button></span>`:''}
         </div>`;
       });
       h+=`</div>`;
@@ -2081,33 +2117,87 @@ function renderPI(){
   contentEl.innerHTML=h;
 }
 
+// ── PI Scoring View ──
+function renderPIScore(){
+  const contentEl=document.getElementById('pi-content');
+  const g=S.piOrg;const pool=S.piPool[g]||[];const ed=canEdit(g);
+  const label=S.kpi[g]?.label||g;
+  const w=piWeights();
+
+  // Rank by score
+  const scored=pool.map(item=>({...item,_sc:piTotalScore(item)})).sort((a,b)=>(b._sc||0)-(a._sc||0));
+
+  let h=`<div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:15px;font-weight:900">${E(label)} Scoring</span>
+      ${S.isAdmin?`<button class="btn" style="font-size:9px;padding:3px 8px" onclick="editPIWeights()">⚖ 비중 조정</button>`:''}
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${PI_SCORE_INDICES.map(idx=>`<span style="font-size:8px;padding:2px 6px;border-radius:3px;background:var(--sec);border:1px solid var(--bd)"><b>${idx.l}</b> ${w[idx.k]}%</span>`).join('')}</div>
+  </div>`;
+
+  if(!scored.length){
+    h+=`<div style="text-align:center;padding:20px;color:var(--t3);font-size:11px">등록된 PI 없음</div>`;
+  }else{
+    h+=`<div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="width:30px">#</th><th style="text-align:left">지수명</th>${PI_SCORE_INDICES.map(idx=>`<th style="width:60px" title="${idx.d}">${idx.l.slice(0,2)}</th>`).join('')}<th style="width:60px">종합</th>${ed?'<th style="width:40px"></th>':''}</tr></thead><tbody>`;
+    scored.forEach((item,rank)=>{
+      const sc=item.scores||{};
+      h+=`<tr><td style="text-align:center;font-weight:900;color:${rank<3?'var(--amber)':'var(--t3)'}">${rank+1}</td><td style="font-weight:700;font-size:11px"><div>${E(item.name)}</div><div style="font-size:8px;color:var(--t3)">${E(item.category||'')} ${item.unit?'· '+E(item.unit):''}</div></td>`;
+      PI_SCORE_INDICES.forEach(idx=>{
+        const v=sc[idx.k];
+        h+=`<td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:${v>=4?'var(--green)':v>=3?'var(--amber)':v?'var(--red)':'var(--t3)'}">${v||'-'}</td>`;
+      });
+      const total=item._sc;
+      h+=`<td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:900;color:${piScoreColor(total)}">${total!=null?total.toFixed(1):'-'}</td>`;
+      h+=ed?`<td style="text-align:center"><button style="border:none;background:0;color:var(--cyan);font-size:9px;cursor:pointer" onclick="editPI('${E(g)}','${item.id}')" title="점수 수정">✏</button></td>`:'';
+      h+=`</tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+  contentEl.innerHTML=h;
+}
+
+function editPIWeights(){
+  const w=piWeights();
+  const m=document.createElement('div');m.className='modal';m.id='piw-m';m.style.display='flex';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="mbox mbox-md">
+    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px"><span>⚖ 평가 비중 조정</span><button class="btn" onclick="document.getElementById('piw-m').remove()">✕</button></div>
+    <div class="adm-ss" style="margin-bottom:12px">각 평가 인덱스의 비중을 조절합니다. 합계가 100%가 되어야 합니다.</div>
+    ${PI_SCORE_INDICES.map(idx=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1"><div style="font-size:11px;font-weight:700">${idx.l}</div><div style="font-size:9px;color:var(--t3)">${idx.d}</div></div><input type="number" class="sinp piw-inp" data-k="${idx.k}" value="${w[idx.k]}" min="0" max="100" style="width:60px;text-align:center;font-size:12px"/><span style="font-size:10px;color:var(--t3)">%</span></div>`).join('')}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)"><span style="font-size:11px;font-weight:700">합계: <span id="piw-sum" style="color:var(--blue)">100</span>%</span><div style="display:flex;gap:6px"><button class="btn" onclick="document.getElementById('piw-m').remove()">취소</button><button class="btn btn-p" onclick="savePIWeights()">저장</button></div></div>
+  </div>`;
+  document.body.appendChild(m);
+  // Live sum
+  document.querySelectorAll('.piw-inp').forEach(inp=>{inp.addEventListener('input',()=>{
+    let s=0;document.querySelectorAll('.piw-inp').forEach(i=>s+=parseInt(i.value)||0);
+    const el=document.getElementById('piw-sum');el.textContent=s;el.style.color=s===100?'var(--green)':'var(--red)';
+  });});
+}
+
+function savePIWeights(){
+  const w={};let sum=0;
+  document.querySelectorAll('.piw-inp').forEach(inp=>{const v=parseInt(inp.value)||0;w[inp.dataset.k]=v;sum+=v;});
+  if(sum!==100){toast('합계가 100%여야 합니다 (현재 '+sum+'%)','e');return;}
+  S.piWeights=w;save();
+  document.getElementById('piw-m')?.remove();
+  renderPI();toast('비중 저장 완료','s');
+}
+
 function promoteToKPI(g,piId){
   const pool=S.piPool[g]||[];
   const item=pool.find(p=>p.id===piId);
   if(!item){toast('PI를 찾을 수 없습니다','e');return;}
-
-  // Build org/unit/section selector modal
   const allOrgs=ordKeys().filter(og=>og!=='전사KPI');
   const m=document.createElement('div');m.className='modal';m.id='promote-m';m.style.display='flex';
   m.onclick=e=>{if(e.target===m)m.remove();};
-
-  let orgOpts=allOrgs.map(og=>{
-    const units=Object.keys(S.kpi[og]?.units||{});
-    const unitOpts=units.map(u=>{
-      const secs=(S.kpi[og].units[u]?.sections||[]);
-      const secOpts=secs.map((s,si)=>`<option value="${E(og)}|${E(u)}|${si}">${E(S.kpi[og]?.label||og)} › ${E(u)} › ${E(s.name)}</option>`).join('');
-      return secOpts;
-    }).join('');
-    return unitOpts;
-  }).join('');
-
+  let orgOpts=allOrgs.map(og=>{const units=Object.keys(S.kpi[og]?.units||{});return units.map(u=>{const secs=(S.kpi[og].units[u]?.sections||[]);return secs.map((s,si)=>`<option value="${E(og)}|${E(u)}|${si}">${E(S.kpi[og]?.label||og)} › ${E(u)} › ${E(s.name)}</option>`).join('');}).join('');}).join('');
   m.innerHTML=`<div class="mbox mbox-md">
     <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px"><span>⬆ KPI로 격상</span><button class="btn" onclick="document.getElementById('promote-m').remove()">✕</button></div>
     <div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:10px;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:800;margin-bottom:4px">${E(item.name)}</div>
-      <div style="font-size:10px;color:var(--t3)">${E(item.category)} · ${E(item.unit||'')} · 기준: ${E(item.baseline||'—')} · 목표: ${E(item.target||'—')}</div>
+      <div style="font-size:13px;font-weight:800">${E(item.name)}</div>
+      <div style="font-size:10px;color:var(--t3)">${E(item.category)} · ${E(item.unit||'')}${piTotalScore(item)!=null?' · 종합 '+piTotalScore(item).toFixed(1)+'점':''}</div>
     </div>
-    <div style="margin-bottom:10px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">KPI 등록 위치 (조직 › 하위조직 › 섹션)</div><select class="sinp" id="pm-target">${orgOpts}</select></div>
+    <div style="margin-bottom:10px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">KPI 등록 위치</div><select class="sinp" id="pm-target">${orgOpts}</select></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">배점</div><input type="number" class="sinp" id="pm-pts" value="10" min="1"/></div>
       <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">방향</div><select class="sinp" id="pm-dir"><option value="asc">증가</option><option value="desc">감소</option></select></div>
@@ -2126,35 +2216,15 @@ function doPromote(g,piId){
   const dir=document.getElementById('pm-dir').value;
   const delAfter=document.getElementById('pm-del').checked;
   if(!target||isNaN(pts)||pts<=0){toast('값을 확인하세요','e');return;}
-
-  const[tg,tu,tsi]=target.split('|');
-  const si=parseInt(tsi);
-  if(!S.kpi[tg]?.units[tu]?.sections[si]){toast('대상 섹션을 찾을 수 없습니다','e');return;}
-
-  // Create KPI item from PI
-  const kpiItem={name:item.name,pts,target:item.target?(item.target+(item.unit?' '+item.unit:'')):'',evalType:'num'};
-  if(!isNaN(parseFloat(item.target))){kpiItem.targetValue=parseFloat(item.target);kpiItem.targetUnit=item.unit||'';}
+  const[tg,tu,tsi]=target.split('|');const si=parseInt(tsi);
+  if(!S.kpi[tg]?.units[tu]?.sections[si]){toast('대상 섹션 없음','e');return;}
+  const kpiItem={name:item.name,pts,target:item.unit||'',evalType:'num'};
   if(dir==='desc')kpiItem.direction='desc';
-
   S.kpi[tg].units[tu].sections[si].items.push(kpiItem);
-
-  // Auto-generate Scale
-  if(kpiItem.targetValue!=null){
-    const nii=S.kpi[tg].units[tu].sections[si].items.length-1;
-    const lk=LK(tg,tu,si,nii);
-    const tv=kpiItem.targetValue;
-    if(dir==='desc'){SL[lk]={s0:String(tv*2||1),s60:'',s80:String(tv+(tv*2-tv)*0.2),s90:String(tv+(tv*2-tv)*0.1),s100:String(tv)};}
-    else{SL[lk]={s0:'0',s60:String(Math.round(tv*0.6)),s80:String(Math.round(tv*0.8)),s90:String(Math.round(tv*0.9)),s100:String(tv)};}
-  }
-
-  // Remove from PI pool if checked
   if(delAfter)S.piPool[g]=pool.filter(p=>p.id!==piId);
-
   addL('PI→KPI격상',item.name+' → '+(S.kpi[tg]?.label||tg));
-  save();
-  document.getElementById('promote-m')?.remove();
-  renderPI();renderKPI();renderDash();
-  toast('"'+item.name+'" KPI로 격상 완료','s');
+  save();document.getElementById('promote-m')?.remove();
+  renderPI();toast('"'+item.name+'" KPI 격상 완료','s');
 }
 
 // PI Edit Modal
@@ -2165,38 +2235,47 @@ function editPI(g,id){openPIEdit(g,id);}
 function openPIEdit(g,id){
   const isNew=!id;
   const pool=S.piPool[g]||[];
-  const item=isNew?{id:'pi_'+Date.now(),category:'기타',name:'',unit:'',baseline:'',target:'',owner:S.curAccount?.name||'',status:'등록',note:''}:pool.find(p=>p.id===id);
+  const item=isNew?{id:'pi_'+Date.now(),category:'기타',name:'',unit:'',owner:S.curAccount?.name||'',status:'등록',note:'',scores:{}}:pool.find(p=>p.id===id);
   if(!item)return;
   _piCtx={g,id:item.id,isNew};
-
-  // For new PI: show multi-org selector
   const allOrgs=ordKeys().filter(og=>og!=='전사KPI'&&canEdit(og));
-  const orgSelector=isNew&&allOrgs.length>1?`<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">적용 조직 <span style="font-size:9px;color:var(--cyan)">(복수 선택 가능)</span></div><div style="display:flex;gap:5px;flex-wrap:wrap" id="pi-orgs">${allOrgs.map(og=>`<button type="button" class="org-btn${og===g?' on':''}" data-og="${E(og)}" onclick="this.classList.toggle('on')" style="font-size:10px;padding:3px 8px">${E(S.kpi[og]?.label||og)}</button>`).join('')}</div></div>`:'';
-
-  const m=document.createElement('div');
-  m.className='modal';m.id='pi-edit-m';m.style.display='flex';
+  const orgSelector=isNew&&allOrgs.length>1?`<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">적용 조직 <span style="font-size:8px;color:var(--cyan)">(복수 선택)</span></div><div style="display:flex;gap:4px;flex-wrap:wrap" id="pi-orgs">${allOrgs.map(og=>`<button type="button" class="org-btn${og===g?' on':''}" data-og="${E(og)}" onclick="this.classList.toggle('on')" style="font-size:9px;padding:2px 6px">${E(S.kpi[og]?.label||og)}</button>`).join('')}</div></div>`:'';
+  const sc=item.scores||{};
+  const m=document.createElement('div');m.className='modal';m.id='pi-edit-m';m.style.display='flex';
   m.onclick=e=>{if(e.target===m)m.remove();};
   m.innerHTML=`<div class="mbox mbox-md">
-    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px"><span>${isNew?'➕ PI 추가':'📝 PI 수정'}</span><button class="btn" onclick="document.getElementById('pi-edit-m').remove()">✕</button></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;margin-bottom:12px"><span>${isNew?'➕ PI 추가':'📝 PI 수정'}</span><button class="btn" onclick="document.getElementById('pi-edit-m').remove()">✕</button></div>
     ${orgSelector}
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px">
-      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">지수명</div><input class="sinp" id="pi-name" value="${E(item.name)}" placeholder="예: 매출 성장률"/></div>
-      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">카테고리</div><select class="sinp" id="pi-cat">${PI_CATEGORIES().map(c=>`<option${c===item.category?' selected':''}>${c}</option>`).join('')}</select></div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px">
+      <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">지수명</div><input class="sinp" id="pi-name" value="${E(item.name)}" placeholder="예: 매출 성장률" style="font-size:11px"/></div>
+      <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">카테고리</div><select class="sinp" id="pi-cat" style="font-size:11px">${PI_CATEGORIES().map(c=>`<option${c===item.category?' selected':''}>${c}</option>`).join('')}</select></div>
+      <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">단위</div><input class="sinp" id="pi-unit" value="${E(item.unit||'')}" placeholder="%, 억" style="font-size:11px"/></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
-      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">단위</div><input class="sinp" id="pi-unit" value="${E(item.unit||'')}" placeholder="%, 억, 건"/></div>
-      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">기준값 (Baseline)</div><input class="sinp" id="pi-base" value="${E(item.baseline||'')}" placeholder="현재 수준"/></div>
-      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">목표값 (Target)</div><input class="sinp" id="pi-tgt" value="${E(item.target||'')}" placeholder="목표 수준"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">담당자</div><input class="sinp" id="pi-owner" value="${E(item.owner||'')}" placeholder="담당자명" style="font-size:11px"/></div>
+      <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">상태</div><select class="sinp" id="pi-status" style="font-size:11px">${PI_STATUS.map(s=>`<option${s===item.status?' selected':''}>${s}</option>`).join('')}</select></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">담당자</div><input class="sinp" id="pi-owner" value="${E(item.owner||'')}" placeholder="담당자명"/></div>
-      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">상태</div><select class="sinp" id="pi-status">${PI_STATUS.map(s=>`<option${s===item.status?' selected':''}>${s}</option>`).join('')}</select></div>
+    <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">비고</div><input class="sinp" id="pi-note" value="${E(item.note||'')}" placeholder="추가 설명" style="font-size:11px"/></div>
+    <div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:8px 10px;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:6px">📊 평가 점수 (5점 만점)</div>
+      ${PI_SCORE_INDICES.map(idx=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:10px;font-weight:600;flex:1" title="${idx.d}">${idx.l}</span><div style="display:flex;gap:2px" id="pi-sc-${idx.k}">${[1,2,3,4,5].map(v=>`<button type="button" style="width:22px;height:22px;border-radius:4px;border:1px solid ${(sc[idx.k]||0)>=v?'var(--blue)':'var(--bd)'};background:${(sc[idx.k]||0)>=v?'var(--blue)':'transparent'};color:${(sc[idx.k]||0)>=v?'#fff':'var(--t3)'};font-size:9px;font-weight:700;cursor:pointer" onclick="setPIStar('${idx.k}',${v})">${v}</button>`).join('')}</div></div>`).join('')}
     </div>
-    <div style="margin-bottom:14px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">비고</div><input class="sinp" id="pi-note" value="${E(item.note||'')}" placeholder="추가 설명"/></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('pi-edit-m').remove()">취소</button><button class="btn btn-p" onclick="savePIEdit()">저장</button></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('pi-edit-m').remove()">취소</button><button class="btn btn-p" onclick="savePIEdit()">저장</button></div>
   </div>`;
   document.body.appendChild(m);
   setTimeout(()=>document.getElementById('pi-name').focus(),100);
+}
+
+function setPIStar(k,v){
+  document.querySelectorAll('#pi-sc-'+k+' button').forEach((b,i)=>{
+    const on=i<v;
+    b.style.borderColor=on?'var(--blue)':'var(--bd)';
+    b.style.background=on?'var(--blue)':'transparent';
+    b.style.color=on?'#fff':'var(--t3)';
+  });
+  // Store in temp data attribute
+  const container=document.getElementById('pi-sc-'+k);
+  if(container)container.dataset.val=v;
 }
 
 function savePIEdit(){
@@ -2204,25 +2283,29 @@ function savePIEdit(){
   const{g,id,isNew}=_piCtx;
   const nm=document.getElementById('pi-name').value.trim();
   if(!nm){toast('지수명을 입력하세요','e');return;}
+  // Collect scores
+  const scores={};
+  PI_SCORE_INDICES.forEach(idx=>{
+    const container=document.getElementById('pi-sc-'+idx.k);
+    const v=container?parseInt(container.dataset.val)||0:0;
+    if(v>0)scores[idx.k]=v;
+  });
   const itemBase={
     name:nm,
     category:document.getElementById('pi-cat').value,
     unit:document.getElementById('pi-unit').value.trim(),
-    baseline:document.getElementById('pi-base').value.trim(),
-    target:document.getElementById('pi-tgt').value.trim(),
     owner:document.getElementById('pi-owner').value.trim(),
     status:document.getElementById('pi-status').value,
     note:document.getElementById('pi-note').value.trim(),
+    scores,
   };
   if(isNew){
-    // Get selected orgs (multi-select)
     const orgBtns=document.querySelectorAll('#pi-orgs .org-btn.on');
     const selOrgs=orgBtns.length?Array.from(orgBtns).map(b=>b.dataset.og):[g];
     let cnt=0;
     selOrgs.forEach(og=>{
       if(!S.piPool[og])S.piPool[og]=[];
-      const item={...itemBase,id:'pi_'+Date.now()+'_'+cnt};
-      S.piPool[og].push(item);cnt++;
+      S.piPool[og].push({...itemBase,id:'pi_'+Date.now()+'_'+cnt});cnt++;
     });
     addL('PI추가',nm+' → '+selOrgs.map(og=>S.kpi[og]?.label||og).join(', '));
     toast(cnt+'개 조직에 PI 추가','s');
@@ -2231,20 +2314,98 @@ function savePIEdit(){
     if(!S.piPool[g])S.piPool[g]=[];
     const idx=S.piPool[g].findIndex(p=>p.id===id);
     if(idx>=0)S.piPool[g][idx]=item;
-    addL('PI수정',g+': '+nm);
-    toast('저장 완료','s');
+    addL('PI수정',g+': '+nm);toast('저장 완료','s');
   }
-  save();
-  document.getElementById('pi-edit-m')?.remove();
-  renderPI();
+  save();document.getElementById('pi-edit-m')?.remove();renderPI();
 }
 
 function delPI(g,id){
-  const pool=S.piPool[g]||[];
-  const item=pool.find(p=>p.id===id);
+  const pool=S.piPool[g]||[];const item=pool.find(p=>p.id===id);
   if(!item||!confirm('"'+item.name+'" 삭제?'))return;
   S.piPool[g]=pool.filter(p=>p.id!==id);
   addL('PI삭제',g+': '+item.name);save();renderPI();toast('삭제됨','i');
+}
+
+// Bulk add PI via CSV
+function bulkAddPI(g){
+  const m=document.createElement('div');m.className='modal';m.id='pibulk-m';m.style.display='flex';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="mbox mbox-md">
+    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;margin-bottom:12px"><span>⬆ PI 일괄 등록</span><button class="btn" onclick="document.getElementById('pibulk-m').remove()">✕</button></div>
+    <div class="adm-ss" style="margin-bottom:10px">엑셀(CSV) 파일로 PI를 일괄 등록합니다.</div>
+    <div style="margin-bottom:12px"><button class="btn" style="font-size:10px" onclick="downloadPITemplate()">📥 양식 다운로드</button><span style="font-size:9px;color:var(--t3);margin-left:6px">양식을 다운로드하여 작성 후 업로드하세요</span></div>
+    <div style="border:2px dashed var(--bd);border-radius:8px;padding:20px;text-align:center;margin-bottom:12px;cursor:pointer;transition:all .15s" id="pibulk-drop" onclick="document.getElementById('pibulk-file').click()" ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='rgba(96,165,250,.05)'" ondragleave="this.style.borderColor='var(--bd)';this.style.background=''" ondrop="event.preventDefault();this.style.borderColor='var(--bd)';this.style.background='';handlePIFile(event.dataTransfer.files[0],'${E(g)}')">
+      <div style="font-size:24px;margin-bottom:6px">📄</div>
+      <div style="font-size:11px;font-weight:700;color:var(--t2)">CSV 파일을 드래그하거나 클릭하여 선택</div>
+      <div style="font-size:9px;color:var(--t3);margin-top:4px">.csv 파일 지원</div>
+      <input type="file" id="pibulk-file" accept=".csv" style="display:none" onchange="handlePIFile(this.files[0],'${E(g)}')"/>
+    </div>
+    <div id="pibulk-preview" style="display:none;margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">미리보기</div><div id="pibulk-table" style="max-height:200px;overflow:auto;border:1px solid var(--bd);border-radius:6px;font-size:10px"></div></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('pibulk-m').remove()">취소</button><button class="btn btn-p" id="pibulk-submit" style="display:none" onclick="doBulkAddPI('${E(g)}')">등록</button></div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function downloadPITemplate(){
+  const cats=PI_CATEGORIES().join('/');
+  const header='지수명,카테고리,단위,담당자,비고';
+  const sample='매출 성장률,재무,%,홍길동,전년 대비\n고객만족도,고객,점,김고객,NPS 기준\nESG 등급,ESG,등급,박ESG,외부 평가';
+  const note='# 카테고리 선택 가능: '+cats+'\n# 첫 행(헤더)은 자동 무시됩니다\n';
+  const csv=note+header+'\n'+sample+'\n';
+  const b=new Blob(['\uFEFF'+csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='PI_일괄등록_양식.csv';a.click();
+  toast('양식 다운로드 완료','s');
+}
+
+let _piBulkData=[];
+function handlePIFile(file,g){
+  if(!file)return;
+  _piBulkData=[];
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const lines=text.split(/\r?\n/).filter(l=>l.trim()&&!l.startsWith('#'));
+    // Skip header if it looks like a header
+    let start=0;
+    if(lines.length&&lines[0].includes('지수명'))start=1;
+    const rows=[];
+    for(let i=start;i<lines.length;i++){
+      const cols=lines[i].split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+      if(!cols[0])continue;
+      rows.push({name:cols[0],category:cols[1]||'기타',unit:cols[2]||'',owner:cols[3]||'',note:cols[4]||''});
+    }
+    _piBulkData=rows;
+    // Show preview
+    const prev=document.getElementById('pibulk-preview');
+    const tbl=document.getElementById('pibulk-table');
+    if(rows.length){
+      prev.style.display='block';
+      document.getElementById('pibulk-submit').style.display='';
+      tbl.innerHTML=`<table class="tbl"><thead><tr><th>지수명</th><th>카테고리</th><th>단위</th><th>담당자</th><th>비고</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="font-weight:600">${E(r.name)}</td><td>${E(r.category)}</td><td>${E(r.unit)}</td><td>${E(r.owner)}</td><td style="font-size:9px">${E(r.note)}</td></tr>`).join('')}</tbody></table>`;
+      document.getElementById('pibulk-drop').innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--green)">✅ ${rows.length}건 로드 완료</div><div style="font-size:9px;color:var(--t3)">${file.name}</div>`;
+    }else{
+      prev.style.display='none';
+      toast('유효한 데이터가 없습니다','e');
+    }
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function doBulkAddPI(g){
+  if(!_piBulkData.length){toast('파일을 먼저 업로드하세요','e');return;}
+  if(!S.piPool[g])S.piPool[g]=[];
+  _piBulkData.forEach((r,i)=>{
+    S.piPool[g].push({
+      id:'pi_'+Date.now()+'_'+i,
+      name:r.name,category:r.category,unit:r.unit,
+      owner:r.owner,note:r.note,status:'등록',scores:{},
+    });
+  });
+  const cnt=_piBulkData.length;
+  addL('PI일괄등록',g+': '+cnt+'건');save();
+  _piBulkData=[];
+  document.getElementById('pibulk-m')?.remove();
+  renderPI();toast(cnt+'개 PI 등록 완료','s');
 }
 
 // ── PASSWORD CHANGE (all users) ──
@@ -2337,6 +2498,7 @@ function applyRemoteData(d){
   if(d.al&&Array.isArray(d.al)){const c=d.al.filter(x=>x&&!(x._===0));if(c.length)S.alerts=c;}
   if(d.log&&Array.isArray(d.log)){const c=d.log.filter(x=>x&&x!=='_');if(c.length)S.log=c;}
   if(d.pi){const c=stripP(d.pi);if(Object.keys(c).length)S.piPool=c;}
+  if(d.piw&&typeof d.piw==='object'){const c={...d.piw};delete c._;if(Object.keys(c).length)S.piWeights=c;}
   if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
@@ -2353,7 +2515,7 @@ function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],ej:S.emailjs||{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},ej:S.emailjs||{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
