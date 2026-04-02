@@ -2187,7 +2187,7 @@ function promoteToKPI(g,piId){
   const pool=S.piPool[g]||[];
   const item=pool.find(p=>p.id===piId);
   if(!item){toast('PI를 찾을 수 없습니다','e');return;}
-  const allOrgs=ordKeys().filter(og=>og!=='전사KPI');
+  const allOrgs=ordKeys().filter(og=>og!=='전사KPI'&&canEdit(og));
   const m=document.createElement('div');m.className='modal';m.id='promote-m';m.style.display='flex';
   m.onclick=e=>{if(e.target===m)m.remove();};
   let orgOpts=allOrgs.map(og=>{const units=Object.keys(S.kpi[og]?.units||{});return units.map(u=>{const secs=(S.kpi[og].units[u]?.sections||[]);return secs.map((s,si)=>`<option value="${E(og)}|${E(u)}|${si}">${E(S.kpi[og]?.label||og)} › ${E(u)} › ${E(s.name)}</option>`).join('');}).join('');}).join('');
