@@ -2030,43 +2030,131 @@ function renderPI(){
   const tabsEl=document.getElementById('pi-org-tabs');
   const contentEl=document.getElementById('pi-content');
   const vo=visibleOrgs().filter(g=>g!=='전사KPI');
-  if(!vo.length){tabsEl.innerHTML='';contentEl.innerHTML='<div style="text-align:center;padding:50px;color:var(--t3)"><div style="font-size:42px;margin-bottom:14px">📌</div><div style="font-size:15px;font-weight:800;color:var(--t2)">조직이 없습니다</div><div style="font-size:11px;margin-top:6px">관리자가 조직을 추가하면 PI Pool을 관리할 수 있습니다</div></div>';return;}
+  if(!vo.length){tabsEl.innerHTML='';contentEl.innerHTML='<div style="text-align:center;padding:50px;color:var(--t3)"><div style="font-size:42px;margin-bottom:14px">📌</div><div style="font-size:15px;font-weight:800;color:var(--t2)">조직이 없습니다</div></div>';return;}
   if(!S.piOrg||!vo.includes(S.piOrg))S.piOrg=vo[0];
   tabsEl.innerHTML=vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('');
   const g=S.piOrg;const pool=S.piPool[g]||[];const ed=canEdit(g);
   const label=S.kpi[g]?.label||g;
 
+  // Cross-org map
+  const piOrgMap={};
+  ordKeys().filter(og=>og!=='전사KPI').forEach(og=>{
+    const p=S.piPool[og];if(!Array.isArray(p))return;
+    p.forEach(item=>{if(!piOrgMap[item.name])piOrgMap[item.name]=new Set();piOrgMap[item.name].add(S.kpi[og]?.label||og);});
+  });
+
   // Group by category
   const grouped={};PI_CATEGORIES().forEach(c=>grouped[c]=[]);
   pool.forEach(item=>{const c=item.category||'기타';if(!grouped[c])grouped[c]=[];grouped[c].push(item);});
 
-  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd)">
-    <div><div style="font-size:18px;font-weight:900">${E(label)}</div>
-    <div style="font-size:11px;color:var(--t2);margin-top:2px">${pool.length}개 지수 등록${ed?'':' · 읽기전용'}</div></div>
-    ${ed?`<button class="btn btn-p" onclick="addPI('${E(g)}')">+ PI 추가</button>`:''}
+  const confirmed=pool.filter(p=>p.status==='확정').length;
+  const reviewing=pool.filter(p=>p.status==='검토중').length;
+
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div><span style="font-size:16px;font-weight:900">${E(label)}</span><span style="font-size:11px;color:var(--t3);margin-left:8px">${pool.length}개</span><span style="font-size:10px;color:var(--green);margin-left:6px">확정 ${confirmed}</span><span style="font-size:10px;color:var(--amber);margin-left:4px">검토 ${reviewing}</span></div>
+    ${ed?`<button class="btn btn-p" style="font-size:10px" onclick="addPI('${E(g)}')">+ PI</button>`:''}
   </div>`;
 
   if(!pool.length){
-    h+=`<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:10px">📌</div><div style="font-size:13px;font-weight:700;color:var(--t2)">등록된 Performance Index가 없습니다</div>${ed?'<div style="font-size:11px;margin-top:6px">위 "+ PI 추가" 버튼으로 조직의 주요 지수를 등록하세요</div>':''}</div>`;
+    h+=`<div style="text-align:center;padding:30px;color:var(--t3);font-size:11px">등록된 PI 없음${ed?' — 위 버튼으로 추가':''}</div>`;
   }else{
-    // Summary chips
-    const confirmed=pool.filter(p=>p.status==='확정').length;
-    const reviewing=pool.filter(p=>p.status==='검토중').length;
-    h+=`<div class="chips" style="margin-bottom:14px"><div class="chip"><div class="chip-l">전체</div><div class="chip-v" style="font-size:15px;color:var(--blue)">${pool.length}</div></div><div class="chip"><div class="chip-l">확정</div><div class="chip-v" style="font-size:15px;color:var(--green)">${confirmed}</div></div><div class="chip"><div class="chip-l">검토중</div><div class="chip-v" style="font-size:15px;color:var(--amber)">${reviewing}</div></div></div>`;
-
     PI_CATEGORIES().forEach(cat=>{
-      const items=grouped[cat];
-      if(!items.length)return;
-      h+=`<div class="sec"><div class="sec-h"><div class="dot dot-${cat==='재무'?'f':cat==='고객'||cat==='ESG'?'c':'s'}"></div><span style="font-size:12px;font-weight:800">${cat}</span><span style="font-size:10px;color:var(--t3);margin-left:4px">${items.length}개</span></div>
-      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th style="text-align:left;width:25%">지수명</th><th style="width:8%">단위</th><th style="width:12%">기준값(Baseline)</th><th style="width:12%">목표값(Target)</th><th style="width:10%">담당자</th><th style="width:8%">상태</th><th style="width:25%">비고</th>${ed?'<th style="width:10%"></th>':''}</tr></thead><tbody>`;
+      const items=grouped[cat];if(!items||!items.length)return;
+      const catDot=cat==='재무'?'f':cat==='고객'||cat==='ESG'?'c':'s';
+      h+=`<div style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:5px;padding:4px 0;margin-bottom:4px"><div class="dot dot-${catDot}"></div><span style="font-size:11px;font-weight:800">${cat}</span><span style="font-size:9px;color:var(--t3)">${items.length}</span></div>`;
       items.forEach(item=>{
-        const stColor={등록:'var(--t3)',검토중:'var(--amber)',확정:'var(--green)',보류:'var(--red)'}[item.status]||'var(--t3)';
-        h+=`<tr><td style="font-weight:700">${E(item.name)}</td><td style="text-align:center;font-size:11px">${E(item.unit||'')}</td><td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px">${E(item.baseline||'—')}</td><td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600">${E(item.target||'—')}</td><td style="text-align:center;font-size:11px">${E(item.owner||'—')}</td><td style="text-align:center"><span style="font-size:10px;font-weight:700;color:${stColor}">${item.status||'등록'}</span></td><td style="font-size:10px;color:var(--t2)">${E(item.note||'')}</td>${ed?`<td style="text-align:right"><button class="btn" style="font-size:9px;padding:2px 6px" onclick="editPI('${E(g)}','${item.id}')">수정</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="delPI('${E(g)}','${item.id}')">삭제</button></td>`:''}</tr>`;
+        const stC={등록:'var(--t3)',검토중:'var(--amber)',확정:'var(--green)',보류:'var(--red)'}[item.status]||'var(--t3)';
+        const orgs=[...(piOrgMap[item.name]||[])];
+        const orgTags=orgs.length>1?orgs.map(o=>`<span style="padding:0 4px;border-radius:2px;font-size:7px;font-weight:700;background:rgba(96,165,250,.08);color:var(--blue);border:1px solid rgba(96,165,250,.15)">${E(o)}</span>`).join(' '):'';
+        h+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid rgba(100,120,160,.06);font-size:11px" class="pi-row">
+          <span style="width:6px;height:6px;border-radius:50%;background:${stC};flex-shrink:0"></span>
+          <span style="font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${E(item.name)}">${E(item.name)}</span>
+          ${item.unit?`<span style="color:var(--t3);font-size:9px">${E(item.unit)}</span>`:''}
+          ${item.target?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t2)">${E(item.target)}</span>`:''}
+          ${orgTags}
+          ${ed?`<span style="display:flex;gap:2px;flex-shrink:0"><button style="border:none;background:0;color:var(--cyan);font-size:9px;cursor:pointer;padding:1px 3px" onclick="promoteToKPI('${E(g)}','${item.id}')" title="KPI로 격상">⬆</button><button style="border:none;background:0;color:var(--t3);font-size:9px;cursor:pointer;padding:1px 3px" onclick="editPI('${E(g)}','${item.id}')" title="수정">✏</button><button style="border:none;background:0;color:var(--red);font-size:9px;cursor:pointer;padding:1px 3px" onclick="delPI('${E(g)}','${item.id}')" title="삭제">✕</button></span>`:''}
+        </div>`;
       });
-      h+=`</tbody></table></div></div>`;
+      h+=`</div>`;
     });
   }
   contentEl.innerHTML=h;
+}
+
+function promoteToKPI(g,piId){
+  const pool=S.piPool[g]||[];
+  const item=pool.find(p=>p.id===piId);
+  if(!item){toast('PI를 찾을 수 없습니다','e');return;}
+
+  // Build org/unit/section selector modal
+  const allOrgs=ordKeys().filter(og=>og!=='전사KPI');
+  const m=document.createElement('div');m.className='modal';m.id='promote-m';m.style.display='flex';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+
+  let orgOpts=allOrgs.map(og=>{
+    const units=Object.keys(S.kpi[og]?.units||{});
+    const unitOpts=units.map(u=>{
+      const secs=(S.kpi[og].units[u]?.sections||[]);
+      const secOpts=secs.map((s,si)=>`<option value="${E(og)}|${E(u)}|${si}">${E(S.kpi[og]?.label||og)} › ${E(u)} › ${E(s.name)}</option>`).join('');
+      return secOpts;
+    }).join('');
+    return unitOpts;
+  }).join('');
+
+  m.innerHTML=`<div class="mbox mbox-md">
+    <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;margin-bottom:14px"><span>⬆ KPI로 격상</span><button class="btn" onclick="document.getElementById('promote-m').remove()">✕</button></div>
+    <div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:10px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:800;margin-bottom:4px">${E(item.name)}</div>
+      <div style="font-size:10px;color:var(--t3)">${E(item.category)} · ${E(item.unit||'')} · 기준: ${E(item.baseline||'—')} · 목표: ${E(item.target||'—')}</div>
+    </div>
+    <div style="margin-bottom:10px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">KPI 등록 위치 (조직 › 하위조직 › 섹션)</div><select class="sinp" id="pm-target">${orgOpts}</select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">배점</div><input type="number" class="sinp" id="pm-pts" value="10" min="1"/></div>
+      <div><div style="font-size:10px;color:var(--t3);margin-bottom:3px">방향</div><select class="sinp" id="pm-dir"><option value="asc">증가</option><option value="desc">감소</option></select></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--t2);margin-bottom:14px;cursor:pointer"><input type="checkbox" id="pm-del" checked/>격상 후 PI Pool에서 제거</label>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('promote-m').remove()">취소</button><button class="btn btn-p" onclick="doPromote('${E(g)}','${piId}')">⬆ KPI로 격상</button></div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function doPromote(g,piId){
+  const pool=S.piPool[g]||[];
+  const item=pool.find(p=>p.id===piId);if(!item)return;
+  const target=document.getElementById('pm-target').value;
+  const pts=parseFloat(document.getElementById('pm-pts').value);
+  const dir=document.getElementById('pm-dir').value;
+  const delAfter=document.getElementById('pm-del').checked;
+  if(!target||isNaN(pts)||pts<=0){toast('값을 확인하세요','e');return;}
+
+  const[tg,tu,tsi]=target.split('|');
+  const si=parseInt(tsi);
+  if(!S.kpi[tg]?.units[tu]?.sections[si]){toast('대상 섹션을 찾을 수 없습니다','e');return;}
+
+  // Create KPI item from PI
+  const kpiItem={name:item.name,pts,target:item.target?(item.target+(item.unit?' '+item.unit:'')):'',evalType:'num'};
+  if(!isNaN(parseFloat(item.target))){kpiItem.targetValue=parseFloat(item.target);kpiItem.targetUnit=item.unit||'';}
+  if(dir==='desc')kpiItem.direction='desc';
+
+  S.kpi[tg].units[tu].sections[si].items.push(kpiItem);
+
+  // Auto-generate Scale
+  if(kpiItem.targetValue!=null){
+    const nii=S.kpi[tg].units[tu].sections[si].items.length-1;
+    const lk=LK(tg,tu,si,nii);
+    const tv=kpiItem.targetValue;
+    if(dir==='desc'){SL[lk]={s0:String(tv*2||1),s60:'',s80:String(tv+(tv*2-tv)*0.2),s90:String(tv+(tv*2-tv)*0.1),s100:String(tv)};}
+    else{SL[lk]={s0:'0',s60:String(Math.round(tv*0.6)),s80:String(Math.round(tv*0.8)),s90:String(Math.round(tv*0.9)),s100:String(tv)};}
+  }
+
+  // Remove from PI pool if checked
+  if(delAfter)S.piPool[g]=pool.filter(p=>p.id!==piId);
+
+  addL('PI→KPI격상',item.name+' → '+(S.kpi[tg]?.label||tg));
+  save();
+  document.getElementById('promote-m')?.remove();
+  renderPI();renderKPI();renderDash();
+  toast('"'+item.name+'" KPI로 격상 완료','s');
 }
 
 // PI Edit Modal
