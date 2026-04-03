@@ -212,6 +212,7 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
   <div class="hdr-r">
     <span id="fb-status" style="font-size:9px;padding:2px 6px;border-radius:3px;display:none"></span>
     <div id="online-users" style="display:flex;align-items:center;gap:2px;margin-right:4px"></div>
+    <button class="btn" onclick="toggleTheme()" id="thBtn" style="font-size:10px;padding:3px 6px">☀️</button>
     <div id="hb-user-chip" style="display:none;position:relative">
       <div onclick="document.getElementById('hb-menu').style.display=document.getElementById('hb-menu').style.display==='block'?'none':'block'" style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sec);cursor:pointer;user-select:none">
         <span id="hb-avatar" style="font-size:16px;line-height:1"></span>
@@ -219,7 +220,6 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
         <span id="hb-role" style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px"></span>
       </div>
       <div id="hb-menu" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:var(--card);border:1px solid var(--bd);border-radius:7px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;min-width:120px;padding:4px;overflow:hidden">
-        <button class="btn" style="width:100%;text-align:left;font-size:10px;padding:6px 8px;border:none;border-radius:4px" onclick="toggleTheme();document.getElementById('hb-menu').style.display='none'" id="thBtn">☀️ 라이트</button>
         <button class="btn" style="width:100%;text-align:left;font-size:10px;padding:6px 8px;border:none;border-radius:4px" onclick="openPwChange();document.getElementById('hb-menu').style.display='none'">🔑 비밀번호</button>
         <div style="height:1px;background:var(--bd);margin:2px 0"></div>
         <button class="btn" style="width:100%;text-align:left;font-size:10px;padding:6px 8px;border:none;border-radius:4px;color:var(--red)" onclick="doLogoutAll()">🚪 로그아웃</button>
@@ -485,7 +485,7 @@ function go(p){
   document.getElementById(m[p])?.classList.add('on');document.getElementById('t-'+p)?.classList.add('on');
   if(p==='dash'){renderDash();renderAnn();}if(p==='kpi'){const vo=visibleOrgs();if(!S.aGrp||!vo.includes(S.aGrp)){S.aGrp=vo[0]||null;S.aUnit=S.aGrp?Object.keys(S.kpi[S.aGrp]?.units||{})[0]:null;}renderNav();renderKPI();setTimeout(addReportBtn,50);const eb=document.getElementById('kpi-edit-bar');if(eb)eb.style.display=vo.some(g=>canEdit(g))?'flex':'none';}if(p==='pi')renderPI();if(p==='log')renderLog();if(p==='admin')renderAdm();
 }
-function toggleTheme(){S.theme=S.theme==='dark'?'light':'dark';document.body.classList.toggle('light',S.theme==='light');document.getElementById('thBtn').textContent=S.theme==='light'?'🌙 다크':'☀️ 라이트';save();}
+function toggleTheme(){S.theme=S.theme==='dark'?'light':'dark';document.body.classList.toggle('light',S.theme==='light');document.getElementById('thBtn').textContent=S.theme==='light'?'🌙':'☀️';save();}
 
 // ══════════════════════════════════════════════════════════════
 // AUTH
@@ -2112,9 +2112,9 @@ function renderPI(){
   if(!S.piOrg)S.piOrg='__all__';
   if(S.piOrg!=='__all__'&&!vo.includes(S.piOrg))S.piOrg='__all__';
   if(!S._piMode)S._piMode='pool';
-  tabsEl.innerHTML=`<div style="display:flex;gap:5px;flex-wrap:wrap;flex:1"><button class="org-btn${S.piOrg==='__all__'?' on':''}" onclick="S.piOrg='__all__';renderPI()">전체</button>${vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div style="display:flex;gap:3px"><button class="btn${S._piMode==='pool'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='pool';renderPI()">Pool</button><button class="btn${S._piMode==='score'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='score';renderPI()">Scoring</button></div>`;
+  tabsEl.innerHTML=`<div style="display:flex;gap:5px;flex-wrap:wrap;flex:1">${S._piMode!=='score'?'<button class="org-btn'+(S.piOrg==='__all__'?' on':'')+'" onclick="S.piOrg=\'__all__\';renderPI()">전체</button>':''}${vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div style="display:flex;gap:3px"><button class="btn${S._piMode==='pool'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='pool';renderPI()">Pool</button><button class="btn${S._piMode==='score'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='score';renderPI()">Scoring</button></div>`;
 
-  if(S._piMode==='score')return renderPIScore();
+  if(S._piMode==='score'){if(S.piOrg==='__all__'&&vo.length)S.piOrg=vo[0];return renderPIScore();}
   return renderPIPool();
 }
 
@@ -2128,7 +2128,7 @@ function renderPIPool(){
 
   // Merge pools from selected orgs
   let pool=[];
-  orgs.forEach(g=>{const p=S.piPool[g]||[];p.forEach(item=>pool.push({...item,_org:g}));});
+  orgs.forEach(g=>{let p=S.piPool[g]||[];if(!Array.isArray(p)){const ks=Object.keys(p);p=ks.every(k=>/^\d+$/.test(k))?ks.sort((a,b)=>+a-+b).map(k=>p[k]):[];S.piPool[g]=p;}p.forEach(item=>pool.push({...item,_org:g}));});
 
   const piOrgMap={};
   vo.forEach(og=>{
@@ -2191,9 +2191,9 @@ function renderPIScore(){
   const isAll=S.piOrg==='__all__';
   const orgs=isAll?vo:[S.piOrg];
   const ed=isAll?S.isAdmin:canEdit(S.piOrg);
-  const label=isAll?'전체 PI Scoring':(S.kpi[S.piOrg]?.label||S.piOrg)+' Scoring';
+  const label=isAll?'전체 PI':(S.kpi[S.piOrg]?.label||S.piOrg);
   let pool=[];
-  orgs.forEach(g=>{const p=S.piPool[g]||[];p.forEach(item=>pool.push({...item,_org:g}));});
+  orgs.forEach(g=>{let p=S.piPool[g]||[];if(!Array.isArray(p)){const ks=Object.keys(p);p=ks.every(k=>/^\d+$/.test(k))?ks.sort((a,b)=>+a-+b).map(k=>p[k]):[];S.piPool[g]=p;}p.forEach(item=>pool.push({...item,_org:g}));});
   const w=piWeights();const wSum=Object.values(w).reduce((a,v)=>a+v,0);
   const scored=pool.map(item=>({...item,_sc:piTotalScore(item)})).sort((a,b)=>(b._sc||0)-(a._sc||0));
 
@@ -2378,8 +2378,19 @@ function openPIEdit(g,id){
   const item=isNew?{id:'pi_'+Date.now(),category:'기타',name:'',unit:'',owner:S.curAccount?.name||'',status:'등록',note:'',scores:{}}:pool.find(p=>p.id===id);
   if(!item)return;
   _piCtx={g,id:item.id,isNew};
-  const allOrgs=ordKeys().filter(og=>og!=='전사KPI'&&canEdit(og));
-  const orgSelector=isNew&&allOrgs.length>1?`<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">적용 조직 <span style="font-size:8px;color:var(--cyan)">(복수 선택)</span></div><div style="display:flex;gap:4px;flex-wrap:wrap" id="pi-orgs">${allOrgs.map(og=>`<button type="button" class="org-btn${og===g?' on':''}" data-og="${E(og)}" onclick="this.classList.toggle('on')" style="font-size:9px;padding:2px 6px">${E(S.kpi[og]?.label||og)}</button>`).join('')}</div></div>`:'';
+  const allOrgs=ordKeys().filter(og=>canEdit(og));
+  let orgSelectorHtml='';
+  if(isNew&&allOrgs.length>1){
+    const btns=allOrgs.map(og=>{
+      const isJeonsa=og==='전사KPI';
+      const isOn=isJeonsa||og===g;
+      const lbl=E(S.kpi[og]?.label||og)+(isJeonsa?' 🔒':'');
+      if(isJeonsa)return'<button type="button" class="org-btn on" data-og="'+E(og)+'" data-locked="1" style="font-size:9px;padding:2px 6px;opacity:.8;cursor:default">'+lbl+'</button>';
+      return'<button type="button" class="org-btn'+(isOn?' on':'')+'" data-og="'+E(og)+'" onclick="this.classList.toggle(\'on\')" style="font-size:9px;padding:2px 6px">'+lbl+'</button>';
+    }).join('');
+    orgSelectorHtml='<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--t3);margin-bottom:3px">적용 조직 <span style="font-size:8px;color:var(--cyan)">(복수 선택)</span></div><div style="display:flex;gap:4px;flex-wrap:wrap" id="pi-orgs">'+btns+'</div></div>';
+  }
+  const orgSelector=orgSelectorHtml;
   const sc=item.scores||{};
   const m=document.createElement('div');m.className='modal';m.id='pi-edit-m';m.style.display='flex';
   m.onclick=e=>{if(e.target===m)m.remove();};
@@ -2441,7 +2452,9 @@ function savePIEdit(){
   };
   if(isNew){
     const orgBtns=document.querySelectorAll('#pi-orgs .org-btn.on');
-    const selOrgs=orgBtns.length?Array.from(orgBtns).map(b=>b.dataset.og):[g];
+    let selOrgs=orgBtns.length?Array.from(orgBtns).map(b=>b.dataset.og):[g];
+    // Always include 전사KPI
+    if(S.kpi['전사KPI']&&!selOrgs.includes('전사KPI'))selOrgs.push('전사KPI');
     let cnt=0;
     selOrgs.forEach(og=>{
       if(!S.piPool[og])S.piPool[og]=[];
@@ -2834,7 +2847,7 @@ function testFBConnection(){
   const has=load();
   ensureDefaultAdmin();await ensureAdminPwH();
   if(S.theme==='light')document.body.classList.add('light');
-  document.getElementById('thBtn').textContent=S.theme==='light'?'🌙 다크':'☀️ 라이트';
+  document.getElementById('thBtn').textContent=S.theme==='light'?'🌙':'☀️';
   
   // Firebase: check saved config
   const fbCfg=getFBConfig();
