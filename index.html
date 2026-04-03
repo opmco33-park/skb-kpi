@@ -2807,7 +2807,7 @@ function applyRemoteData(d){
   if(d.ascr){const c=stripP(d.ascr);if(Object.keys(c).length)S.ascr=c;}
   if(d.SL){const c=stripP(d.SL);if(Object.keys(c).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,c);}}
   if(d.kpi){const c=stripP(d.kpi);if(Object.keys(c).length)S.kpi=c;}
-  if(d.users){const c=stripP(d.users);if(Object.keys(c).length)S.users=c;}
+  if(d.users){const c=stripP(d.users);if(Object.keys(c).length){Object.values(c).forEach(u=>{if(u.orgs){u.orgs=Array.isArray(u.orgs)?u.orgs.filter(x=>x&&x!=='_none'):[];} else u.orgs=[];if(u.perms){const p=stripP(u.perms);u.perms=p||{};} else u.perms={};});S.users=c;}}
   if(d.oo&&Array.isArray(d.oo)){const c=d.oo.filter(x=>x&&x!=='_');if(c.length)S.orgOrder=c;}
   if(d.ann)S.announcement=d.ann;
   if(d.wg&&Array.isArray(d.wg)){const c=d.wg.filter(x=>x&&!(x._===0));if(c.length)S.widgets=c;}
@@ -2837,7 +2837,7 @@ function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',ej:S.emailjs||{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return u;})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',ej:S.emailjs||{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
@@ -2962,7 +2962,7 @@ function testFBConnection(){
 (async()=>{
   await initH();
   const has=load();
-  ensureDefaultAdmin();await ensureAdminPwH();
+  ensureDefaultAdmin();
   if(S.theme==='light')document.body.classList.add('light');
   document.getElementById('thBtn').textContent=S.theme==='light'?'🌙':'☀️';
   
@@ -2971,10 +2971,13 @@ function testFBConnection(){
   if(fbCfg){
     const ok=initFirebase(fbCfg);
     if(ok){
-      // Load latest data from Firebase
       const fbHas=await loadFromFirebase();
-      if(fbHas){ensureDefaultAdmin();await ensureAdminPwH();}
+      ensureDefaultAdmin();await ensureAdminPwH();
+    }else{
+      await ensureAdminPwH();
     }
+  }else{
+    await ensureAdminPwH();
   }
   
   if(has||_fbReady){
