@@ -190,11 +190,17 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
 @media(max-width:480px){.tabs{gap:2px}.tab{font-size:9px;padding:4px 6px}.org-btn{font-size:9px;padding:2px 6px}.tbl th,.tbl td{padding:4px 5px;font-size:9px}.chip{min-width:60px}.chip-v{font-size:12px}.hdr-r{gap:3px}.sinp{font-size:11px}#pi-org-tabs{gap:3px}}
 @media print{body{background:#fff!important;color:#000!important}.hdr,.tabs,.btn{display:none!important}.pg{display:block!important}.pg:not(.on){display:none!important}}
 
-.piw-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--bg);cursor:pointer;margin-top:-5.5px}
-.piw-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--bg);cursor:pointer}
-.piw-slider::-webkit-slider-runnable-track{height:3px;background:var(--bd);border-radius:2px}
-.piw-slider::-moz-range-track{height:3px;background:var(--bd);border-radius:2px}
+.piw-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#3b82f6;border:2px solid #1e3a5f;cursor:pointer;margin-top:-5.5px;box-shadow:0 0 4px rgba(59,130,246,.5);transition:background .2s,box-shadow .2s}
+.piw-slider.capped::-webkit-slider-thumb{background:#ef4444;border-color:#7f1d1d;box-shadow:0 0 6px rgba(239,68,68,.6)}
+.piw-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#3b82f6;border:2px solid #1e3a5f;cursor:pointer;box-shadow:0 0 4px rgba(59,130,246,.5);transition:background .2s,box-shadow .2s}
+.piw-slider.capped::-moz-range-thumb{background:#ef4444;border-color:#7f1d1d;box-shadow:0 0 6px rgba(239,68,68,.6)}
+.piw-slider::-webkit-slider-runnable-track{height:3px;background:#475569;border-radius:2px}
+.piw-slider::-moz-range-track{height:3px;background:#475569;border-radius:2px}
 .piw-slider{overflow:visible}
+body.light .piw-slider::-webkit-slider-thumb{border-color:#bfdbfe;box-shadow:0 0 4px rgba(59,130,246,.3)}
+body.light .piw-slider::-moz-range-thumb{border-color:#bfdbfe;box-shadow:0 0 4px rgba(59,130,246,.3)}
+body.light .piw-slider::-webkit-slider-runnable-track{background:#cbd5e1}
+body.light .piw-slider::-moz-range-track{background:#cbd5e1}
 </style>
 </head>
 <body>
@@ -441,6 +447,7 @@ const S={
   piCategories:null, // null = use defaults
   piWeights:null, // null = use defaults
   piIndexLabels:null, // custom labels for scoring indices
+  corpOrg:null, // which org key is the 전사 org (default: auto-detect)
   // EmailJS config {serviceId, templateId, publicKey}
   emailjs:null,
 };
@@ -505,7 +512,7 @@ async function ensureAdminPwH(){
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
   if(changed){
     // Save to localStorage only (not Firebase) during init
-    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   }
 }
 
@@ -571,8 +578,8 @@ function updBar(){}
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
     // Fix Firebase array-to-object conversion in nested structures
     Object.values(d.kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;if(un.sections&&!Array.isArray(un.sections)){const ks=Object.keys(un.sections);if(ks.every(k=>/^\d+$/.test(k)))un.sections=ks.sort((a,b)=>+a-+b).map(k=>un.sections[k]);else un.sections=[];}if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{if(sec.items&&!Array.isArray(sec.items)){const ks=Object.keys(sec.items);if(ks.every(k=>/^\d+$/.test(k)))sec.items=ks.sort((a,b)=>+a-+b).map(k=>sec.items[k]);else sec.items=[];}if(!Array.isArray(sec.items))sec.items=[];});});});
     Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
@@ -752,8 +759,15 @@ function renderWidget(w,has){
   return '';
 }
 
+function getCorpOrg(){
+  if(S.corpOrg&&S.kpi[S.corpOrg])return S.corpOrg;
+  const keys=ordKeys();
+  const auto=keys.find(g=>g==='전사KPI')||keys.find(g=>(S.kpi[g]?.label||g).includes('전사'));
+  return auto||null;
+}
 function wTotal(has){
-  const vo=visibleOrgs();const cGk='전사KPI';
+  const vo=visibleOrgs();const cGk=getCorpOrg();
+  if(!cGk)return'';
   if(!vo.includes(cGk))return'';
   const g=cGk,u=g?Object.keys(S.kpi[g]?.units||{})[0]:null;
   if(!has||!g||!u) return`<div class="card"><div class="card-h"><div class="dot dot-f"></div><div class="card-t">전사 KPI 종합</div></div><div class="card-b" style="text-align:center;padding:20px;color:var(--t3);font-size:11px">데이터를 업로드하면 표시됩니다</div></div>`;
@@ -782,7 +796,7 @@ function wTotal(has){
   return`<div class="card"><div class="card-h clk" onclick="togDB('total')"><div class="dot dot-f"></div><div class="card-t">전사 KPI 종합</div><span style="margin-left:8px;font-size:13px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${tp!=null?SC(tp):'var(--t3)'}">${tsc!=null?tsc+'/'+tmx+'점':'—'}</span>${tp!=null?`<span style="font-size:11px;font-weight:800;color:${SC(tp)};margin-left:4px">${tp}%</span>`:''}<span style="font-size:9px;color:var(--t3);margin-left:6px">${filled}/${total}개 입력</span><span class="chv up" id="dbi-total">▼</span></div><div class="card-b" id="dbb-total"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">${cards}</div></div></div>`;
 }
 
-function wCorpChart(has){const vo=visibleOrgs();const cGk='전사KPI';if(!vo.includes(cGk))return'';const g=cGk,u=g?Object.keys(S.kpi[g]?.units||{})[0]:null;if(!has||!g||!u)return`<div class="card"><div class="card-h clk" onclick="togDB('corp')"><div class="dot dot-f"></div><div class="card-t">전사 KPI</div><span class="chv" id="dbi-corp"></span></div><div class="card-b" id="dbb-corp"><div style="padding:16px;color:var(--t3);font-size:11px">데이터 업로드 필요</div></div></div>`;const items=[];S.kpi[g].units[u].sections.forEach((s,si)=>s.items.forEach((it,ii)=>{const sc=isc(g,u,si,ii);items.push({name:it.name,pts:it.pts,score:sc,pct:sc!=null?Math.round(sc/it.pts*100):null,sec:s.name});}));return`<div class="card"><div class="card-h clk" onclick="togDB('corp')"><div class="dot dot-f"></div><div class="card-t">전사 KPI</div><div style="margin-left:auto;display:flex;gap:7px;align-items:center"><div class="leg"><div style="width:8px;height:6px;border:1.5px dashed rgba(100,140,220,.45);border-radius:2px"></div>SUPEX</div><div class="leg"><div style="width:8px;height:6px;background:var(--blue);opacity:.8;border-radius:2px"></div>실적</div></div><span class="chv" id="dbi-corp"></span></div><div class="card-b" id="dbb-corp" style="overflow-x:auto;display:flex;align-items:flex-end;min-height:170px">${buildChart(items)}</div></div>`;}
+function wCorpChart(has){const vo=visibleOrgs();const cGk=getCorpOrg();if(!cGk)return'';if(!vo.includes(cGk))return'';const g=cGk,u=g?Object.keys(S.kpi[g]?.units||{})[0]:null;if(!has||!g||!u)return`<div class="card"><div class="card-h clk" onclick="togDB('corp')"><div class="dot dot-f"></div><div class="card-t">전사 KPI</div><span class="chv" id="dbi-corp"></span></div><div class="card-b" id="dbb-corp"><div style="padding:16px;color:var(--t3);font-size:11px">데이터 업로드 필요</div></div></div>`;const items=[];S.kpi[g].units[u].sections.forEach((s,si)=>s.items.forEach((it,ii)=>{const sc=isc(g,u,si,ii);items.push({name:it.name,pts:it.pts,score:sc,pct:sc!=null?Math.round(sc/it.pts*100):null,sec:s.name});}));return`<div class="card"><div class="card-h clk" onclick="togDB('corp')"><div class="dot dot-f"></div><div class="card-t">전사 KPI</div><div style="margin-left:auto;display:flex;gap:7px;align-items:center"><div class="leg"><div style="width:8px;height:6px;border:1.5px dashed rgba(100,140,220,.45);border-radius:2px"></div>SUPEX</div><div class="leg"><div style="width:8px;height:6px;background:var(--blue);opacity:.8;border-radius:2px"></div>실적</div></div><span class="chv" id="dbi-corp"></span></div><div class="card-b" id="dbb-corp" style="overflow-x:auto;display:flex;align-items:flex-end;min-height:170px">${buildChart(items)}</div></div>`;}
 
 function wOrgChart(has){const gks=visibleOrgs().filter(g=>g!=='전사KPI');if(!S.dbOrg||!gks.includes(S.dbOrg))S.dbOrg=gks[0]||null;const sg=S.dbOrg;const btns=gks.map(g=>`<button class="org-btn${g===sg?' on':''}" onclick="event.stopPropagation();S.dbOrg='${E(g)}';renderDash()">${E(S.kpi[g]?.label||g)}</button>`).join('');if(!has||!sg||!S.kpi[sg])return`<div class="card"><div class="card-h"><div class="dot dot-s"></div><div class="card-t">단위조직 KPI</div></div><div class="card-b" style="padding:16px;color:var(--t3);font-size:11px">데이터 필요</div></div>`;const uks=Object.keys(S.kpi[sg].units),cu=uks.includes(sg)?sg:uks[0],su=S.kpi[sg]?.units[cu];const items=[];if(su)su.sections.forEach((s,si)=>s.items.forEach((it,ii)=>{const sc=isc(sg,cu,si,ii);items.push({name:it.name,pts:it.pts,score:sc,pct:sc!=null?Math.round(sc/it.pts*100):null,sec:s.name});}));return`<div class="card"><div class="card-h clk" onclick="togDB('org')"><div class="dot dot-s"></div><div class="card-t">${E(S.kpi[sg]?.label||sg)} KPI</div><span class="chv up" id="dbi-org">▼</span></div><div style="padding:6px 14px 2px;display:flex;gap:5px;flex-wrap:wrap;border-bottom:1px solid var(--bd)">${btns}</div><div class="card-b" id="dbb-org" style="overflow-x:auto;display:flex;align-items:flex-end;min-height:170px">${buildChart(items)}</div></div>`;}
 
@@ -825,12 +839,18 @@ const AT=[
 function renderAdm(){if(!S.isAdmin)return;document.getElementById('an').innerHTML=AT.map(t=>`<button class="adm-ni${S.admTab===t.id?' on':''}" onclick="S.admTab='${t.id}';renderAdm()"><span style="font-size:13px">${t.ic}</span>${t.lb}</button>`).join('');const b=document.getElementById('ab');const fn={menu:aMenu,dashwg:aDashWg,kpimgr:aKpiMgr,perms:aPerms,yearly:aYearly,deadline:aDeadlineAnnAlerts,analysis:aAnalysis,pimgr:aPIMgr,report:aReport,sysdata:aSysData};b.innerHTML='';(fn[S.admTab]||fn.menu)(b);}
 
 // ── 1. MENU EDITOR ──
-function aMenu(el){const gks=ordKeys();el.innerHTML=`<div class="adm-s"><div class="adm-st">🏗️ 조직 구조 관리</div><div class="adm-ss">조직을 추가·삭제·이름변경하고, 드래그로 순서를 변경합니다.</div><div id="org-list">${gks.map(g=>`<div class="arow" draggable="true" data-o="${E(g)}" ondragstart="dS(event)" ondragover="dO(event)" ondragleave="dL(event)" ondrop="dD(event)" ondragend="dE(event)"><span class="grip">☰</span><span style="font-size:12px;font-weight:700;flex:1">${E(S.kpi[g]?.label||g)}</span><span style="font-size:9px;color:var(--t3)">${Object.keys(S.kpi[g]?.units||{}).length}개 단위</span><button class="btn" style="font-size:9px;padding:2px 6px" onclick="aRenOrg('${E(g)}')">이름변경</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="aDelOrg('${E(g)}')">삭제</button></div>`).join('')}</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-p" onclick="aAddOrg()">+ 조직 추가</button></div></div><div class="adm-s"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="adm-st" style="margin:0">📂 하위조직/섹션</div><div style="display:flex;gap:5px">${S._aso?`<button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="aAddUnit('${E(S._aso)}')">+ 하위조직</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="aBulkAddSec()">+ 섹션 일괄추가</button>`:''}</div></div><div class="adm-ss">조직을 선택하면 하위 편집 가능</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${gks.map(g=>`<button class="org-btn${g===S._aso?' on':''}" onclick="S._aso='${E(g)}';renderAdm()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div id="adm-ul">${aUnits()}</div></div>`;}
+function aMenu(el){const gks=ordKeys();el.innerHTML=`<div class="adm-s"><div class="adm-st">🏗️ 조직 구조 관리</div><div class="adm-ss">조직을 추가·삭제·이름변경하고, 드래그로 순서를 변경합니다.</div><div id="org-list">${gks.map(g=>`<div class="arow" draggable="true" data-o="${E(g)}" ondragstart="dS(event)" ondragover="dO(event)" ondragleave="dL(event)" ondrop="dD(event)" ondragend="dE(event)"><span class="grip">☰</span><span style="font-size:12px;font-weight:700;flex:1">${E(S.kpi[g]?.label||g)}${getCorpOrg()===g?' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(59,130,246,.15);color:#60a5fa;font-weight:800;border:1px solid rgba(59,130,246,.3)">전사</span>':''}</span><span style="font-size:9px;color:var(--t3)">${Object.keys(S.kpi[g]?.units||{}).length}개 단위</span><button class="btn" style="font-size:8px;padding:1px 5px;${getCorpOrg()===g?'color:var(--blue);border-color:var(--blue)':''}" onclick="event.stopPropagation();setCorpOrg('${E(g)}')" title="전사 조직으로 지정">★</button><button class="btn" style="font-size:9px;padding:2px 6px" onclick="aRenOrg('${E(g)}')">이름변경</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="aDelOrg('${E(g)}')">삭제</button></div>`).join('')}</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-p" onclick="aAddOrg()">+ 조직 추가</button></div></div><div class="adm-s"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="adm-st" style="margin:0">📂 하위조직/섹션</div><div style="display:flex;gap:5px">${S._aso?`<button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="aAddUnit('${E(S._aso)}')">+ 하위조직</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="aBulkAddSec()">+ 섹션 일괄추가</button>`:''}</div></div><div class="adm-ss">조직을 선택하면 하위 편집 가능</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${gks.map(g=>`<button class="org-btn${g===S._aso?' on':''}" onclick="S._aso='${E(g)}';renderAdm()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div id="adm-ul">${aUnits()}</div></div>`;}
 function aUnits(){const g=S._aso;if(!g||!S.kpi[g]){S._aso=null;return'<div style="color:var(--t3);font-size:11px">조직을 선택하세요</div>';}return Object.keys(S.kpi[g].units).map(u=>{const un=S.kpi[g].units[u];return`<div class="arow" style="flex-wrap:wrap" draggable="true" data-ug="${E(g)}" data-uu="${E(u)}" ondragstart="_uDrag=this.dataset.uu;this.classList.add('dragging')" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');aReorderUnit('${E(g)}',_uDrag,this.dataset.uu)" ondragend="this.classList.remove('dragging')"><span class="grip">☰</span><span style="font-size:12px;font-weight:700;flex:1">${E(u)}</span><span style="font-size:9px;color:var(--t3)">${un.sections.length}섹션 ${un.sections.reduce((a,s)=>a+s.items.length,0)}지표</span><button class="btn" style="font-size:9px;padding:2px 6px" onclick="aRenU('${E(g)}','${E(u)}')">이름변경</button><button class="btn btn-d" style="font-size:9px;padding:2px 6px" onclick="aDelU('${E(g)}','${E(u)}')">삭제</button><div style="width:100%;padding-left:20px;margin-top:4px">${un.sections.map((s,si)=>`<div style="display:flex;align-items:center;gap:5px;padding:2px 0"><div class="dot dot-${s.type==='financial'?'f':s.type==='common'?'c':'s'}"></div><span style="font-size:10px;font-weight:600;flex:1">${E(s.name)} <span style="color:var(--t3)">(${s.items.length}개)</span></span><button class="btn" style="font-size:8px;padding:1px 4px" onclick="aRenSec('${E(g)}','${E(u)}',${si})">이름</button><button class="btn" style="font-size:8px;padding:1px 4px" onclick="aBulkRenSec('${E(s.name)}')">일괄변경</button><button class="btn btn-d" style="font-size:8px;padding:1px 4px" onclick="aDelSec('${E(g)}','${E(u)}',${si})">삭제</button></div>`).join('')}<button class="btn" style="font-size:9px;padding:2px 6px;margin-top:4px" onclick="aAddSec('${E(g)}','${E(u)}')">+섹션</button></div></div>`;}).join('');}
 let _uDrag=null;
 
 let _dg=null;function dS(e){_dg=e.currentTarget.dataset.o;e.currentTarget.classList.add('dragging');}function dO(e){e.preventDefault();e.currentTarget.classList.add('dragover');}function dL(e){e.currentTarget.classList.remove('dragover');}function dD(e){e.preventDefault();e.currentTarget.classList.remove('dragover');const tgt=e.currentTarget.dataset.o;if(!_dg||_dg===tgt)return;const arr=S.orgOrder.length?[...S.orgOrder]:Object.keys(S.kpi);const fi=arr.indexOf(_dg),ti=arr.indexOf(tgt);if(fi<0||ti<0)return;arr.splice(fi,1);arr.splice(ti,0,_dg);S.orgOrder=arr;addL('순서변경',_dg);save();renderAdm();renderNav();}function dE(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.dragover').forEach(el=>el.classList.remove('dragover'));}
 
+function setCorpOrg(g){
+  S.corpOrg=g;
+  addL('전사조직지정',S.kpi[g]?.label||g);
+  save();renderAdm();renderDash();
+  toast((S.kpi[g]?.label||g)+' → 전사 조직으로 지정','s');
+}
 function aAddOrg(){const n=prompt('새 조직 이름');if(!n)return;if(S.kpi[n]){toast('이미 존재','e');return;}S.kpi[n]={label:n,color:orgCol(n),units:{}};S.kpi[n].units[n]={sections:[{name:'전략과제',type:'strategy',items:[]}]};S.orgOrder.push(n);if(!S.aGrp){S.aGrp=n;S.aUnit=n;}if(!S._aso)S._aso=n;addL('조직추가',n);save();renderAdm();renderNav();}
 function aDelOrg(g){if(!confirm('"'+g+'" 삭제?'))return;delete S.kpi[g];S.orgOrder=S.orgOrder.filter(k=>k!==g);Object.keys(S.act).filter(k=>k.startsWith(g+'__')).forEach(k=>{delete S.act[k];delete S.ascr[k];});addL('조직삭제',g);save();renderAdm();renderAll();}
 function aRenOrg(g){const n=prompt('새 이름',S.kpi[g]?.label||g);if(!n)return;S.kpi[g].label=n;addL('이름변경',g+'→'+n);save();renderNav();document.getElementById('ab').innerHTML='';aMenu(document.getElementById('ab'));}
@@ -1842,7 +1862,7 @@ function wTagSummary(has){
 
 function wYoYCompare(has){
   if(!has)return'<div class="card"><div class="card-h"><div class="dot dot-f"></div><div class="card-t">YoY 전년 비교</div></div><div class="card-b" style="text-align:center;padding:14px;color:var(--t3);font-size:11px">데이터 없음</div></div>';
-  const items=[];const g='전사KPI',u=g;if(!S.kpi[g]?.units[u])return'';
+  const items=[];const g=getCorpOrg(),u=g;if(!g||!S.kpi[g]?.units[u])return'';
   S.kpi[g].units[u].sections.forEach((sec,si)=>sec.items.forEach((it,ii)=>{const yoy=getYoY(g,u,si,ii);if(yoy)items.push({name:it.name,cur:yoy.cur,prev:yoy.prev,change:parseFloat(yoy.change)});}));
   if(!items.length)return'<div class="card"><div class="card-h"><div class="dot dot-f"></div><div class="card-t">YoY 전년 비교</div></div><div class="card-b" style="text-align:center;padding:14px;color:var(--t3);font-size:11px">5개년 데이터 필요</div></div>';
   return`<div class="card"><div class="card-h"><div class="dot dot-f"></div><div class="card-t">YoY 전년 비교</div></div><div class="card-b"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">${items.map(x=>{const up=x.change>=0;return`<div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:8px 10px"><div style="font-size:10px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${E(x.name)}</div><div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:15px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'}${Math.abs(x.change)}%</span></div><div style="font-size:9px;color:var(--t3)">${E(x.prev)} → ${E(x.cur)}</div></div>`;}).join('')}</div></div></div>`;}
@@ -2107,38 +2127,26 @@ function piScoreColor(t){
 function renderPI(){
   const tabsEl=document.getElementById('pi-org-tabs');
   const contentEl=document.getElementById('pi-content');
-  const vo=visibleOrgs().filter(g=>g!=='전사KPI');
+  const vo=visibleOrgs();
   if(!vo.length){tabsEl.innerHTML='';contentEl.innerHTML='<div style="text-align:center;padding:50px;color:var(--t3)"><div style="font-size:42px;margin-bottom:14px">📌</div><div style="font-size:15px;font-weight:800;color:var(--t2)">조직이 없습니다</div></div>';return;}
-  if(!S.piOrg)S.piOrg='__all__';
-  if(S.piOrg!=='__all__'&&!vo.includes(S.piOrg))S.piOrg='__all__';
+  if(!S.piOrg||!vo.includes(S.piOrg)){const co=getCorpOrg();S.piOrg=co&&vo.includes(co)?co:vo[0];}
   if(!S._piMode)S._piMode='pool';
-  tabsEl.innerHTML=`<div style="display:flex;gap:5px;flex-wrap:wrap;flex:1">${S._piMode!=='score'?'<button class="org-btn'+(S.piOrg==='__all__'?' on':'')+'" onclick="S.piOrg=\'__all__\';renderPI()">전체</button>':''}${vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div style="display:flex;gap:3px"><button class="btn${S._piMode==='pool'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='pool';renderPI()">Pool</button><button class="btn${S._piMode==='score'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='score';renderPI()">Scoring</button></div>`;
+  tabsEl.innerHTML=`<div style="display:flex;gap:5px;flex-wrap:wrap;flex:1">${vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div style="display:flex;gap:3px"><button class="btn${S._piMode==='pool'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='pool';renderPI()">Pool</button><button class="btn${S._piMode==='score'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='score';renderPI()">Scoring</button></div>`;
 
-  if(S._piMode==='score'){if(S.piOrg==='__all__'&&vo.length)S.piOrg=vo[0];return renderPIScore();}
+  if(S._piMode==='score')return renderPIScore();
   return renderPIPool();
 }
 
 function renderPIPool(){
   const contentEl=document.getElementById('pi-content');
   const vo=visibleOrgs();
-  const isAll=S.piOrg==='__all__';
-  const orgs=isAll?vo:[S.piOrg];
-  const ed=isAll?S.isAdmin:canEdit(S.piOrg);
-  const label=isAll?'전체 PI Pool':(S.kpi[S.piOrg]?.label||S.piOrg);
+  const orgs=[S.piOrg];
+  const ed=canEdit(S.piOrg);
+  const label=S.kpi[S.piOrg]?.label||S.piOrg;
 
   // Merge pools from ALL selected orgs (including 전사KPI)
   let pool=[];
   orgs.forEach(g=>{let p=S.piPool[g]||[];if(!Array.isArray(p)){const ks=Object.keys(p);p=ks.every(k=>/^\d+$/.test(k))?ks.sort((a,b)=>+a-+b).map(k=>p[k]):[];S.piPool[g]=p;}p.forEach(item=>pool.push({...item,_org:g}));});
-
-  // Deduplicate: if same PI name exists in both 전사KPI and another org, show once with org tags
-  if(isAll){
-    const seen={};const deduped=[];
-    pool.forEach(item=>{
-      const key=item.name+'___'+item.category;
-      if(!seen[key]){seen[key]=item;deduped.push(item);}
-    });
-    pool=deduped;
-  }
 
   const piOrgMap={};
   vo.forEach(og=>{
@@ -2153,7 +2161,7 @@ function renderPIPool(){
   if(!hasSearch){
     let hdr=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div><span style="font-size:15px;font-weight:900">${E(label)}</span><span style="font-size:10px;color:var(--t3);margin-left:6px">${pool.length}개</span></div>
-      ${!isAll&&ed?`<div style="display:flex;gap:4px"><button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="addPI('${E(S.piOrg)}')">+ PI</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="bulkAddPI('${E(S.piOrg)}')">⬆ 일괄등록</button></div>`:''}
+      ${ed?`<div style="display:flex;gap:4px"><button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="addPI('${E(S.piOrg)}')">+ PI</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="bulkAddPI('${E(S.piOrg)}')">⬆ 일괄등록</button></div>`:''}
     </div><div style="margin-bottom:8px"><input class="sinp" id="pi-search" placeholder="🔍 PI 검색..." style="font-size:10px;padding:4px 8px" oninput="piSearchDebounce(this.value)" value="${E(S._piFilter||'')}"/></div><div id="pi-list-area"></div>`;
     contentEl.innerHTML=hdr;
   }else{
@@ -2187,7 +2195,7 @@ function renderPIPool(){
       items.forEach(item=>{
         const stC={등록:'var(--t3)',검토중:'var(--amber)',확정:'var(--green)',보류:'var(--red)'}[item.status]||'var(--t3)';
         const orgsSet=[...(piOrgMap[item.name]||[])];
-        const orgTags=orgsSet.length>1?orgsSet.map(o=>`<span style="padding:0 3px;border-radius:2px;font-size:7px;font-weight:600;background:rgba(96,165,250,.08);color:var(--blue)">${E(o)}</span>`).join(' '):(isAll?`<span style="padding:0 3px;border-radius:2px;font-size:7px;font-weight:600;background:rgba(96,165,250,.08);color:var(--blue)">${E(S.kpi[item._org]?.label||item._org)}</span>`:'');
+        const orgTags=orgsSet.length>1?orgsSet.map(o=>`<span style="padding:0 3px;border-radius:2px;font-size:7px;font-weight:600;background:rgba(96,165,250,.08);color:var(--blue)">${E(o)}</span>`).join(' '):'';
         const sc=piTotalScore(item);const scDisp=sc!=null?sc.toFixed(1):'';
         const itemEd=canEdit(item._org);
         h+=`<div style="display:flex;align-items:center;gap:5px;padding:3px 6px;border-bottom:1px solid rgba(100,120,160,.04);font-size:10px">
@@ -2221,10 +2229,9 @@ function filterPIPool(q){S._piFilter=q;renderPIPool();}
 function renderPIScore(){
   const contentEl=document.getElementById('pi-content');
   const vo=visibleOrgs().filter(g=>g!=='전사KPI');
-  const isAll=S.piOrg==='__all__';
-  const orgs=isAll?vo:[S.piOrg];
-  const ed=isAll?S.isAdmin:canEdit(S.piOrg);
-  const label=isAll?'전체 PI':(S.kpi[S.piOrg]?.label||S.piOrg);
+  const orgs=[S.piOrg];
+  const ed=canEdit(S.piOrg);
+  const label=S.kpi[S.piOrg]?.label||S.piOrg;
   let pool=[];
   orgs.forEach(g=>{let p=S.piPool[g]||[];if(!Array.isArray(p)){const ks=Object.keys(p);p=ks.every(k=>/^\d+$/.test(k))?ks.sort((a,b)=>+a-+b).map(k=>p[k]):[];S.piPool[g]=p;}p.forEach(item=>pool.push({...item,_org:g}));});
   const w=piWeights();const wSum=Object.values(w).reduce((a,v)=>a+v,0);
@@ -2233,21 +2240,21 @@ function renderPIScore(){
   // Weight sliders panel - compact single row
   let sliderHtml='';
   if(S.isAdmin){
-    sliderHtml='<div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:6px 10px;margin-bottom:8px">'
+    sliderHtml='<div style="background:linear-gradient(135deg,rgba(30,58,95,.95),rgba(15,23,42,.9));border:1px solid rgba(59,130,246,.3);border-radius:7px;padding:6px 10px;margin-bottom:8px">'
       +'<div style="display:flex;align-items:center;gap:8px">'
-      +'<span style="font-size:9px;font-weight:800;color:var(--t3);white-space:nowrap">⚖ 비중</span>'
+      +'<span style="font-size:9px;font-weight:800;color:#93c5fd;white-space:nowrap">⚖ 비중</span>'
       +'<div style="display:flex;gap:10px;flex:1;flex-wrap:nowrap;overflow-x:auto">';
     PI_SCORE_INDICES().forEach(idx=>{
       const v=w[idx.k]||0;
       sliderHtml+='<div style="display:flex;align-items:center;gap:3px;min-width:0;flex:1">'
-        +'<span style="font-size:8px;font-weight:700;color:var(--t2);white-space:nowrap">'+idx.l.slice(0,2)+'</span>'
+        +'<span style="font-size:8px;font-weight:700;color:#e2e8f0;white-space:nowrap">'+idx.l.slice(0,2)+'</span>'
         +'<input type="range" min="0" max="50" value="'+v+'" data-k="'+idx.k+'" class="piw-slider" style="flex:1;min-width:40px;height:16px;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer;margin:0;overflow:visible">'
-        +'<span style="font-size:9px;font-weight:800;color:var(--blue);min-width:24px;text-align:right" id="piw-val-'+idx.k+'">'+v+'%</span></div>';
+        +'<span style="font-size:9px;font-weight:800;color:#60a5fa;min-width:24px;text-align:right" id="piw-val-'+idx.k+'">'+v+'%</span></div>';
     });
     sliderHtml+='</div>'
       +'<div style="display:flex;align-items:center;gap:4px;margin-left:4px">'
-      +'<div style="width:40px;height:3px;background:var(--bd);border-radius:2px;overflow:hidden"><div id="piw-bar-fill" style="height:100%;border-radius:2px;transition:width .2s,background .2s;width:'+Math.min(wSum,100)+'%;background:'+(wSum===100?'var(--green)':wSum>100?'var(--red)':'var(--amber)')+'"></div></div>'
-      +'<span id="piw-total" style="font-size:9px;font-weight:800;color:'+(wSum===100?'var(--green)':wSum>100?'var(--red)':'var(--amber)')+'">'+wSum+'%</span></div></div></div>';
+      +'<div style="width:40px;height:3px;background:#334155;border-radius:2px;overflow:hidden"><div id="piw-bar-fill" style="height:100%;border-radius:2px;transition:width .2s,background .2s;width:'+Math.min(wSum,100)+'%;background:'+(wSum===100?'#22c55e':wSum>100?'#ef4444':'#f59e0b')+'"></div></div>'
+      +'<span id="piw-total" style="font-size:9px;font-weight:800;color:'+(wSum===100?'#22c55e':wSum>100?'#ef4444':'#f59e0b')+'">'+wSum+'%</span></div></div></div>';
   }else{
     sliderHtml='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">'+PI_SCORE_INDICES().map(idx=>'<span style="font-size:8px;padding:2px 6px;border-radius:3px;background:var(--sec);border:1px solid var(--bd)"><b>'+idx.l+'</b> '+(w[idx.k]||0)+'%</span>').join('')+'</div>';
   }
@@ -2288,17 +2295,25 @@ function renderPIScore(){
   if(S.isAdmin){
     document.querySelectorAll('.piw-slider').forEach(inp=>{
       inp.addEventListener('input',function(){
-        const k=this.dataset.k;const v=Number(this.value);
+        const k=this.dataset.k;let v=Number(this.value);
         if(!S.piWeights)S.piWeights={...PI_DEF_WEIGHTS};
+        // Calculate what total would be with new value
+        const oldV=S.piWeights[k]||0;
+        const otherSum=Object.entries(S.piWeights).reduce((a,[key,val])=>a+(key===k?0:val),0);
+        // Cap at 100%
+        if(otherSum+v>100){v=100-otherSum;this.value=v;}
         S.piWeights[k]=v;
         document.getElementById('piw-val-'+k).textContent=v+'%';
-        // Update bar
-        const total=Object.values(S.piWeights).reduce((a,b)=>a+b,0);
+        const total=otherSum+v;
         const ok=total===100;
         document.getElementById('piw-total').textContent=total+'%';
-        document.getElementById('piw-total').style.color=ok?'var(--green)':total>100?'var(--red)':'var(--amber)';
-        document.getElementById('piw-bar-fill').style.width=Math.min(total,100)+'%';
-        document.getElementById('piw-bar-fill').style.background=ok?'var(--green)':total>100?'var(--red)':'var(--amber)';
+        document.getElementById('piw-total').style.color=ok?'#22c55e':'#f59e0b';
+        document.getElementById('piw-bar-fill').style.width=total+'%';
+        document.getElementById('piw-bar-fill').style.background=ok?'#22c55e':'#f59e0b';
+        // Visual feedback: flash slider thumb red when capped
+        const atMax=(otherSum+Number(this.max||50))>100;
+        this.style.setProperty('--thumb-clr',v>=100-otherSum?'#ef4444':'#3b82f6');
+        this.classList.toggle('capped',v>=100-otherSum&&!ok);
         // Recalc scores in table
         document.querySelectorAll('[id^="psc-"]').forEach(cell=>{
           const piId=cell.id.replace('psc-','');
@@ -2415,7 +2430,7 @@ function openPIEdit(g,id){
   let orgSelectorHtml='';
   if(isNew&&allOrgs.length>1){
     const btns=allOrgs.map(og=>{
-      const isJeonsa=og==='전사KPI';
+      const isJeonsa=og===getCorpOrg();
       const isOn=isJeonsa||og===g;
       const lbl=E(S.kpi[og]?.label||og)+(isJeonsa?' 🔒':'');
       if(isJeonsa)return'<button type="button" class="org-btn on" data-og="'+E(og)+'" data-locked="1" style="font-size:9px;padding:2px 6px;opacity:.8;cursor:default">'+lbl+'</button>';
@@ -2487,7 +2502,7 @@ function savePIEdit(){
     const orgBtns=document.querySelectorAll('#pi-orgs .org-btn.on');
     let selOrgs=orgBtns.length?Array.from(orgBtns).map(b=>b.dataset.og):[g];
     // Always include 전사KPI
-    if(S.kpi['전사KPI']&&!selOrgs.includes('전사KPI'))selOrgs.push('전사KPI');
+    const _co=getCorpOrg();if(_co&&S.kpi[_co]&&!selOrgs.includes(_co))selOrgs.push(_co);
     let cnt=0;
     selOrgs.forEach(og=>{
       if(!S.piPool[og])S.piPool[og]=[];
@@ -2737,6 +2752,7 @@ function applyRemoteData(d){
   if(d.pi){const c=stripP(d.pi);if(Object.keys(c).length)S.piPool=c;}
   if(d.piw&&typeof d.piw==='object'){const c={...d.piw};delete c._;if(Object.keys(c).length)S.piWeights=c;}
   if(d.pil&&typeof d.pil==='object'){const c={...d.pil};delete c._;if(Object.keys(c).length)S.piIndexLabels=c;}
+  if(d.co&&d.co!=='_')S.corpOrg=d.co;
   if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
@@ -2753,7 +2769,7 @@ function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},ej:S.emailjs||{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?S.users:{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',ej:S.emailjs||{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
