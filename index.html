@@ -59,10 +59,11 @@ body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;
 
 /* Dashboard */
 .db{display:flex;flex-direction:column;gap:12px}
-.db-row{display:flex;gap:12px;width:100%}
-.db-row>.wg{flex-shrink:0;min-width:0;overflow:hidden}
+.db-row{display:flex;gap:12px;width:100%;align-items:stretch}
+.db-row>.wg{flex-shrink:0;min-width:0;overflow:hidden;display:flex;flex-direction:column}
 .db-row>.wg-100{width:100%}.db-row>.wg-75{width:calc(75% - 9px)}.db-row>.wg-50{width:calc(50% - 6px)}.db-row>.wg-25{width:calc(25% - 9px)}
-.db-row>.wg .card-b{overflow-x:auto;scrollbar-width:thin}
+.db-row>.wg .card{display:flex;flex-direction:column;flex:1;min-height:0}
+.db-row>.wg .card-b{overflow:auto;scrollbar-width:thin;flex:1;max-height:280px}
 @media(max-width:900px){.db-row{flex-wrap:wrap}.db-row>.wg-75,.db-row>.wg-50,.db-row>.wg-25{width:100%}}
 .db-hero{padding:10px 14px;background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(6,182,212,.06));border-right:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;min-width:140px}
 .db-row1{display:flex;align-items:stretch;min-height:76px;flex-wrap:wrap}
@@ -587,8 +588,8 @@ function showSettings(){toast('설정은 관리자 콘솔에서 관리합니다'
 function closeSet(){}
 function chgPw(){}
 function clearAll(){if(!confirm('⚠️ 전체 초기화\n\n모든 KPI 지표, 실적, 사용자 계정, 코멘트, 태그, 이력이 삭제됩니다.\nFirebase 데이터도 함께 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?'))return;if(!confirm('정말로 전체 초기화를 진행하시겠습니까?'))return;try{if(_fbRef){_fbRef.off();}localStorage.removeItem(LS);if(_fbReady&&_fbRef){_fbRef.remove().then(()=>{location.reload();}).catch(()=>{location.reload();});}else{location.reload();}}catch(e){console.error('clearAll error:',e);localStorage.removeItem(LS);location.reload();}}
-function exportAll(){const d={act:S.act,ascr:S.ascr,SL,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,v:'v4'};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='KPI_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('백업 완료','s');}
-function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);['act','ascr','kpi','users','orgOrder'].forEach(k=>{if(d[k])Object.assign(S[k],d[k]);});if(d.SL)Object.assign(SL,d.SL);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;save();closeSet();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
+function exportAll(){const d={act:S.act,ascr:S.ascr,SL,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,ej:S.emailjs||null,v:'v4'};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='KPI_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('백업 완료','s');}
+function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.kpi)Object.assign(S.kpi,d.kpi);if(d.users)Object.assign(S.users,d.users);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ej)S.emailjs=d.ej;save();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
 function renderAll(){renderNav();renderKPI();renderDash();renderAnn();}
 
 // ══════════════════════════════════════════════════════════════
