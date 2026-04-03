@@ -214,6 +214,7 @@ body.light .piw-slider::-moz-range-track{background:#cbd5e1}
     <button class="tab" onclick="go('kpi')" id="t-kpi">📋 KPI 관리</button>
     <button class="tab" onclick="go('pi')" id="t-pi">📌 PI Pool</button>
     <button class="tab" onclick="go('log')" id="t-log">📝 이력</button>
+    <button class="tab" onclick="go('board')" id="t-board">💬 게시판</button>
     <button class="tab" onclick="go('admin')" id="t-admin" style="display:none">🛡️ 관리자</button>
   </div>
   <div class="hdr-r">
@@ -272,6 +273,15 @@ body.light .piw-slider::-moz-range-track{background:#cbd5e1}
     <div style="display:flex;gap:6px"><button class="btn" onclick="exportLog()">⬇내보내기</button></div>
   </div>
   <div id="log-c"></div>
+</div>
+
+<!-- ═══ BOARD ═══ -->
+<div class="pg" id="pg-board">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:8px">
+    <div><div style="font-size:17px;font-weight:900">💬 게시판</div><div style="font-size:11px;color:var(--t2);margin-top:2px">기능개선 요청 · 의견 공유 · 자유게시</div></div>
+    <button class="btn btn-p" onclick="openBoardWrite()" style="font-size:11px">✏️ 글쓰기</button>
+  </div>
+  <div id="board-list"></div>
 </div>
 
 <!-- ═══ ADMIN ═══ -->
@@ -450,6 +460,7 @@ const S={
   piWeights:null, // null = use defaults
   piIndexLabels:null, // custom labels for scoring indices
   corpOrg:null, // which org key is the 전사 org (default: auto-detect)
+  board:[], // public board posts
   // EmailJS config {serviceId, templateId, publicKey}
   emailjs:null,
 };
@@ -490,9 +501,9 @@ function go(p){
   if(!isLoggedIn()){toast('로그인 필요','e');return;}
   if(p==='admin'&&!S.isAdmin){toast('관리자 권한 필요','e');return;}
   S.page=p;document.querySelectorAll('.pg').forEach(e=>e.classList.remove('on'));document.querySelectorAll('.tab').forEach(e=>e.classList.remove('on'));
-  const m={dash:'pg-dash',kpi:'pg-kpi',pi:'pg-pi',log:'pg-log',admin:'pg-admin'};
+  const m={dash:'pg-dash',kpi:'pg-kpi',pi:'pg-pi',log:'pg-log',board:'pg-board',admin:'pg-admin'};
   document.getElementById(m[p])?.classList.add('on');document.getElementById('t-'+p)?.classList.add('on');
-  if(p==='dash'){renderDash();renderAnn();}if(p==='kpi'){const vo=visibleOrgs();if(!S.aGrp||!vo.includes(S.aGrp)){S.aGrp=vo[0]||null;S.aUnit=S.aGrp?Object.keys(S.kpi[S.aGrp]?.units||{})[0]:null;}renderNav();renderKPI();setTimeout(addReportBtn,50);const eb=document.getElementById('kpi-edit-bar');if(eb)eb.style.display=vo.some(g=>canEdit(g))?'flex':'none';}if(p==='pi')renderPI();if(p==='log')renderLog();if(p==='admin')renderAdm();
+  if(p==='dash'){renderDash();renderAnn();}if(p==='kpi'){const vo=visibleOrgs();if(!S.aGrp||!vo.includes(S.aGrp)){S.aGrp=vo[0]||null;S.aUnit=S.aGrp?Object.keys(S.kpi[S.aGrp]?.units||{})[0]:null;}renderNav();renderKPI();setTimeout(addReportBtn,50);const eb=document.getElementById('kpi-edit-bar');if(eb)eb.style.display=vo.some(g=>canEdit(g))?'flex':'none';}if(p==='pi')renderPI();if(p==='log')renderLog();if(p==='admin')renderAdm();if(p==='board')renderBoard();
 }
 function toggleTheme(){S.theme=S.theme==='dark'?'light':'dark';document.body.classList.toggle('light',S.theme==='light');document.getElementById('thBtn').textContent=S.theme==='light'?'🌙':'☀️';save();}
 
@@ -514,7 +525,7 @@ async function ensureAdminPwH(){
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
   if(changed){
     // Save to localStorage only (not Firebase) during init
-    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   }
 }
 
@@ -532,7 +543,7 @@ async function doLogin(){
   document.getElementById('login-gate').style.display='none';
   document.getElementById('lg-id').value='';document.getElementById('lg-pw').value='';errEl.textContent='';
   updateAuthUI();
-  addL('로그인',acc.name+' ('+acc.role+')');save();
+  addL('로그인',acc.name+' ('+acc.role+')');try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ej:S.emailjs,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   startFBListener();
   startPresence();
   go('dash');renderAnn();toast(acc.name+'님 로그인','s');setTimeout(checkAlerts,300);
@@ -580,8 +591,8 @@ function updBar(){}
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
     // Fix Firebase array-to-object conversion in nested structures
     Object.values(d.kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;if(un.sections&&!Array.isArray(un.sections)){const ks=Object.keys(un.sections);if(ks.every(k=>/^\d+$/.test(k)))un.sections=ks.sort((a,b)=>+a-+b).map(k=>un.sections[k]);else un.sections=[];}if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{if(sec.items&&!Array.isArray(sec.items)){const ks=Object.keys(sec.items);if(ks.every(k=>/^\d+$/.test(k)))sec.items=ks.sort((a,b)=>+a-+b).map(k=>sec.items[k]);else sec.items=[];}if(!Array.isArray(sec.items))sec.items=[];});});});
     Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
@@ -589,8 +600,8 @@ function showSettings(){toast('설정은 관리자 콘솔에서 관리합니다'
 function closeSet(){}
 function chgPw(){}
 function clearAll(){if(!confirm('⚠️ 전체 초기화\n\n모든 KPI 지표, 실적, 사용자 계정, 코멘트, 태그, 이력이 삭제됩니다.\nFirebase 데이터도 함께 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?'))return;if(!confirm('정말로 전체 초기화를 진행하시겠습니까?'))return;try{if(_fbRef){_fbRef.off();}localStorage.removeItem(LS);if(_fbReady&&_fbRef){_fbRef.remove().then(()=>{location.reload();}).catch(()=>{location.reload();});}else{location.reload();}}catch(e){console.error('clearAll error:',e);localStorage.removeItem(LS);location.reload();}}
-function exportAll(){const d={act:S.act,ascr:S.ascr,SL,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,ej:S.emailjs||null,v:'v4'};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='KPI_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('백업 완료','s');}
-function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.kpi)Object.assign(S.kpi,d.kpi);if(d.users)Object.assign(S.users,d.users);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ej)S.emailjs=d.ej;save();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
+function exportAll(){const d={act:S.act,ascr:S.ascr,SL,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ej:S.emailjs||null,v:'v4'};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='KPI_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('백업 완료','s');}
+function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.kpi)Object.assign(S.kpi,d.kpi);if(d.users)Object.assign(S.users,d.users);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.ej)S.emailjs=d.ej;save();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
 function renderAll(){renderNav();renderKPI();renderDash();renderAnn();}
 
 // ══════════════════════════════════════════════════════════════
@@ -2647,6 +2658,96 @@ function doBulkAddPI(g){
 }
 
 // ── PASSWORD CHANGE (all users) ──
+// ── BOARD (Public) ──
+const BOARD_TAGS=['기능개선','버그신고','의견','질문','기타'];
+function renderBoard(){
+  const el=document.getElementById('board-list');if(!el)return;
+  const posts=(S.board||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(!posts.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px">💬</div><div style="font-size:13px">등록된 게시글이 없습니다</div><div style="font-size:11px;margin-top:4px">✏️ 글쓰기 버튼으로 첫 게시글을 작성하세요</div></div>';return;}
+  let h='';
+  posts.forEach(p=>{
+    const date=p.ts?new Date(p.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    const tagClr={기능개선:'var(--blue)',버그신고:'var(--red)',의견:'var(--green)',질문:'var(--amber)',기타:'var(--t3)'}[p.tag]||'var(--t3)';
+    const isMine=S.curAccount&&p.author===S.curAccount.name;
+    const replies=(p.replies||[]);
+    h+=`<div style="background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:14px 16px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:14px">${E(p.avatar||'👤')}</span>
+        <span style="font-size:11px;font-weight:700">${E(p.author||'익명')}</span>
+        <span style="font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(100,120,200,.1);color:${tagClr};font-weight:700;border:1px solid ${tagClr}">${E(p.tag||'기타')}</span>
+        <span style="font-size:9px;color:var(--t3);margin-left:auto">${date}</span>
+        ${isMine||S.isAdmin?'<button style="border:none;background:0;color:var(--red);font-size:9px;cursor:pointer" onclick="delBoardPost(\''+p.id+'\')">삭제</button>':''}
+      </div>
+      <div style="font-size:14px;font-weight:800;margin-bottom:4px">${E(p.title||'')}</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.6;white-space:pre-line;margin-bottom:8px">${E(p.body||'')}</div>
+      <div style="border-top:1px solid var(--bd);padding-top:8px">
+        ${replies.map(r=>`<div style="display:flex;gap:6px;padding:4px 0;border-bottom:1px solid rgba(100,120,180,.06)"><span style="font-size:12px">${E(r.avatar||'👤')}</span><div style="flex:1"><span style="font-size:10px;font-weight:700">${E(r.author)}</span><span style="font-size:8px;color:var(--t3);margin-left:4px">${r.ts?new Date(r.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''}</span><div style="font-size:10px;color:var(--t2);margin-top:2px">${E(r.text)}</div></div></div>`).join('')}
+        <div style="display:flex;gap:4px;margin-top:6px"><input class="sinp" id="reply-${p.id}" placeholder="댓글 입력..." style="flex:1;font-size:10px;padding:4px 8px" onkeydown="if(event.key==='Enter')addBoardReply('${p.id}')"/><button class="btn" style="font-size:9px;padding:3px 8px" onclick="addBoardReply('${p.id}')">등록</button></div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML=h;
+}
+
+function openBoardWrite(){
+  const m=document.createElement('div');m.className='modal';m.id='board-write-m';m.style.display='flex';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="mbox mbox-md">
+    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;margin-bottom:12px"><span>✏️ 게시글 작성</span><button class="btn" onclick="document.getElementById('board-write-m').remove()">✕</button></div>
+    <div style="display:flex;gap:4px;margin-bottom:8px">${BOARD_TAGS.map(t=>`<button type="button" class="org-btn${t==='기능개선'?' on':''}" data-tag="${t}" onclick="document.querySelectorAll('#board-write-m .org-btn').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="font-size:9px;padding:2px 8px">${t}</button>`).join('')}</div>
+    <input class="sinp" id="bw-title" placeholder="제목" style="margin-bottom:6px;font-size:12px;font-weight:700"/>
+    <textarea class="sinp" id="bw-body" placeholder="내용을 입력하세요..." style="min-height:120px;resize:vertical;font-size:11px;line-height:1.6;margin-bottom:8px"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:6px"><button class="btn" onclick="document.getElementById('board-write-m').remove()">취소</button><button class="btn btn-p" onclick="submitBoardPost()">게시</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  setTimeout(()=>document.getElementById('bw-title').focus(),100);
+}
+
+function submitBoardPost(){
+  const title=document.getElementById('bw-title').value.trim();
+  const body=document.getElementById('bw-body').value.trim();
+  const tagBtn=document.querySelector('#board-write-m .org-btn.on');
+  const tag=tagBtn?tagBtn.dataset.tag:'기타';
+  if(!title){toast('제목을 입력하세요','e');return;}
+  if(!body){toast('내용을 입력하세요','e');return;}
+  if(!S.board)S.board=[];
+  S.board.push({
+    id:'bd_'+Date.now(),
+    title,body,tag,
+    author:S.curAccount?.name||'익명',
+    avatar:S.curAccount?.avatar||'👤',
+    ts:Date.now(),
+    replies:[]
+  });
+  save();
+  document.getElementById('board-write-m')?.remove();
+  renderBoard();
+  toast('게시글이 등록되었습니다','s');
+}
+
+function addBoardReply(postId){
+  const inp=document.getElementById('reply-'+postId);
+  if(!inp)return;
+  const text=inp.value.trim();
+  if(!text){toast('댓글을 입력하세요','e');return;}
+  const post=(S.board||[]).find(p=>p.id===postId);
+  if(!post)return;
+  if(!post.replies)post.replies=[];
+  post.replies.push({
+    author:S.curAccount?.name||'익명',
+    avatar:S.curAccount?.avatar||'👤',
+    text,
+    ts:Date.now()
+  });
+  save();renderBoard();
+}
+
+function delBoardPost(postId){
+  if(!confirm('이 게시글을 삭제하시겠습니까?'))return;
+  S.board=(S.board||[]).filter(p=>p.id!==postId);
+  save();renderBoard();toast('삭제되었습니다','i');
+}
+
 function copyFBShareURL(){
   const url=getFBShareURL();
   if(!url){toast('Firebase 설정이 없습니다','e');return;}
@@ -2755,7 +2856,7 @@ function initFirebase(cfg){
         if(typeof firebase!=='undefined'){
           clearInterval(retry);
           initFirebase(cfg);
-          if(_fbReady){loadFromFirebase().then(()=>{ensureDefaultAdmin();ensureAdminPwH();});}
+          if(_fbReady){loadFromFirebase().then(()=>{ensureDefaultAdmin();ensureAdminPwH().then(()=>{if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];});});}
         }
       },1000);
       setTimeout(()=>clearInterval(retry),10000);
@@ -2865,10 +2966,11 @@ function applyRemoteData(d){
   if(d.piw&&typeof d.piw==='object'){const c={...d.piw};delete c._;if(Object.keys(c).length)S.piWeights=c;}
   if(d.pil&&typeof d.pil==='object'){const c={...d.pil};delete c._;if(Object.keys(c).length)S.piIndexLabels=c;}
   if(d.co&&d.co!=='_')S.corpOrg=d.co;
+  if(d.bd){const c=Array.isArray(d.bd)?d.bd.filter(x=>x&&!(x._===0)):fixArr(d.bd)||[];if(c.length)S.board=c;}
   if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
-  try{const _sd={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,pi:S.piPool,pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,ej:S.emailjs,t:d.t};localStorage.setItem(LS,JSON.stringify(_sd));}catch(e){}
+  try{const _sd={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,pi:S.piPool,pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ej:S.emailjs,t:d.t};localStorage.setItem(LS,JSON.stringify(_sd));}catch(e){}
   if(S.page==='dash')renderDash();
   if(S.page==='kpi'){renderNav();renderKPI();}
   if(S.page==='pi')renderPI();
@@ -2877,11 +2979,17 @@ function applyRemoteData(d){
   renderAnn();
 }
 
-function saveToFirebase(){
+async function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
+  // Safety: don't overwrite Firebase if users data seems incomplete
+  const _uCount=Object.keys(S.users||{}).length;
+  if(_uCount<=1&&_fbRef){
+    // Check if Firebase already has more users
+    try{const snap=await _fbRef.child('users').once('value');const fbUsers=snap.val();if(fbUsers){const fbCount=Object.keys(fbUsers).filter(k=>k!=='_').length;if(fbCount>_uCount){console.warn('saveToFirebase blocked: local users('+_uCount+') < Firebase('+fbCount+')');_fbSyncing=false;return;}}}catch(e){}
+  }
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return u;})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',ej:S.emailjs||{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return u;})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',bd:(S.board||[]).length?S.board:[{_:0}],ej:S.emailjs||{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
