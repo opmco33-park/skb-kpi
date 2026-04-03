@@ -1546,23 +1546,23 @@ function closeYR(){document.getElementById('yr-m').style.display='none';}
 
 // Admin: 5개년 실적 편집
 function aYearly(el){
-  const gks=ordKeys();
+  const corpG=getCorpOrg();
+  if(!corpG||!S.kpi[corpG]){el.innerHTML='<div class="adm-s"><div class="adm-st">📅 전사KPI 관리</div><div class="adm-ss">전사 조직이 설정되지 않았습니다.<br>메뉴/조직편집에서 ★ 버튼으로 전사 조직을 지정하세요.</div></div>';return;}
+  const corpLabel=S.kpi[corpG]?.label||corpG;
   const allItems=[];
-  gks.forEach(g=>{
-    Object.entries(S.kpi[g].units).forEach(([u,un])=>{
-      un.sections.forEach((s,si)=>{
-        s.items.forEach((it,ii)=>{
-          const k=yrKey(g,u,si,ii);
-          const hasYr=S.yearly[k]&&S.yearly[k].rows&&S.yearly[k].rows.length>0;
-          const rowCnt=hasYr?S.yearly[k].rows.length:0;
-          allItems.push({g,u,si,ii,name:it.name,orgLabel:S.kpi[g].label||g,k,hasYr,rowCnt});
-        });
+  Object.entries(S.kpi[corpG].units).forEach(([u,un])=>{
+    un.sections.forEach((s,si)=>{
+      s.items.forEach((it,ii)=>{
+        const k=yrKey(corpG,u,si,ii);
+        const hasYr=S.yearly[k]&&S.yearly[k].rows&&S.yearly[k].rows.length>0;
+        const rowCnt=hasYr?S.yearly[k].rows.length:0;
+        allItems.push({g:corpG,u,si,ii,name:it.name,orgLabel:corpLabel,k,hasYr,rowCnt,sec:s.name});
       });
     });
   });
   const regCnt=allItems.filter(x=>x.hasYr).length;
 
-  el.innerHTML=`<div class="adm-s"><div class="adm-st">📅 전사KPI 관리</div><div class="adm-ss">각 KPI 지표의 5개년(Y-3 ~ Y+2) 실적 테이블을 구성합니다.<br>Y축 행은 지표별로 자유롭게 정의할 수 있습니다. CSV로 전체 지표를 일괄 등록/수정할 수 있습니다.</div>
+  el.innerHTML=`<div class="adm-s"><div class="adm-st">📅 전사KPI 관리</div><div class="adm-ss">${E(corpLabel)}의 KPI 지표별 5개년(Y-3 ~ Y+2) 실적 테이블을 구성합니다.<br>Y축 행은 지표별로 자유롭게 정의할 수 있습니다.</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
     <label class="btn btn-p" style="cursor:pointer">📁 CSV 일괄 업로드<input type="file" style="display:none" accept=".csv" onchange="uploadYrCSV(this.files[0]);this.value=''"/></label>
     <button class="btn" onclick="dlYrCSV()">⬇ 현재 데이터 내보내기</button>
@@ -1583,7 +1583,8 @@ function aYearly(el){
 let _yrEditKey=null,_yrEditName='',_yrEditOrg='';
 function openYREdit(k,name,org){
   _yrEditKey=k;_yrEditName=name;_yrEditOrg=org;
-  const yr=S.yearly[k]||{rows:[],cols:YR_COLS,data:{}};
+  if(!S.yearly[k])S.yearly[k]={rows:[],cols:YR_COLS,data:{}};
+  const yr=S.yearly[k];
   const rows=yr.rows||[];
   let html=`<div class="adm-s"><div class="adm-st">📅 ${E(name)}</div><div class="adm-ss">${E(org)} · 행(Y축)을 먼저 정의한 후, 각 셀에 값을 입력하세요.</div>`;
   // Row editor
@@ -1617,7 +1618,9 @@ function openYREdit(k,name,org){
 
 function yrFlushInputs(){
   if(!_yrEditKey)return;
-  const yr=S.yearly[_yrEditKey];if(!yr)return;
+  if(!S.yearly[_yrEditKey])S.yearly[_yrEditKey]={rows:[],cols:YR_COLS,data:{}};
+  const yr=S.yearly[_yrEditKey];
+  if(!yr.data)yr.data={};
   document.querySelectorAll('#ab .ainp[onchange*="yrCellSet"]').forEach(inp=>{
     const m=inp.getAttribute('onchange').match(/yrCellSet\((\d+),(\d+),/);
     if(m){
@@ -1625,6 +1628,11 @@ function yrFlushInputs(){
       if(!yr.data[ri])yr.data[ri]={};
       yr.data[ri][ci]=inp.value;
     }
+  });
+  // Also flush row names
+  document.querySelectorAll('#ab .yr-row-inp').forEach(inp=>{
+    const ri=parseInt(inp.dataset.ri);
+    if(!isNaN(ri)&&yr.rows[ri]!==undefined)yr.rows[ri]=inp.value;
   });
 }
 function yrRowAdd(){
