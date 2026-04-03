@@ -453,7 +453,7 @@ const S={
   emailjs:null,
 };
 const SL={};
-const AVATARS=['👨‍💼','👩‍💼','👨‍💻','👩‍💻','🧑‍💼','👨‍🔬','👩‍🔬','🧑‍💻','👨‍🏫','👩‍🏫','🦸‍♂️','🦸‍♀️','🧑‍🚀','👨‍🎨','👩‍🎨','🧙‍♂️','🧙‍♀️','🦊','🐻','🐼','🦁','🐯','🐸','🦉','🐧'];
+const AVATARS=['👨‍💼','👩‍💼','👨‍💻','👩‍💻','🧑‍💼','👨‍🔬','👩‍🔬','🧑‍💻','👨‍🏫','👩‍🏫','🦸‍♂️','🦸‍♀️','🧑‍🚀','👨‍🎨','👩‍🎨','🧙‍♂️','🧙‍♀️','🦊','🐻','🐼','🦁','🐯','🐸','🦉','🐧','👨‍⚕️','👩‍⚕️','👨‍🍳','👩‍🍳','👨‍🌾','👩‍🌾','👨‍🚒','👩‍🚒','🧑‍🎓','👮‍♂️','👮‍♀️','🕵️‍♂️','🕵️‍♀️','🧑‍🏭','🧑‍⚖️','🦹‍♂️','🦹‍♀️','🧝‍♂️','🧝‍♀️','🧛‍♂️','🧜‍♀️','🐶','🐱','🐰','🐨','🐷','🦄','🐲','🦅','🐬','🦋','🌸','🌟','⚡','🔥','💎','🎯','🎲','🎵','🏆','🚀'];
 const LS='skb_kpi_v4';
 const DEF_APW='1234',DEF_OPW='kpi2026';
 
@@ -903,15 +903,21 @@ function wRow(i,v){S.widgets[i].row=parseInt(v);addL('위젯행',S.widgets[i].ti
 
 // ── 3. KPI MANAGER with CSV UPLOAD ──
 function aKpiMgr(el){
+  const gks=ordKeys();
+  if(!S._kpiMgrOrg)S._kpiMgrOrg='__all__';
   let rows='';let totalItems=0;
-  ordKeys().forEach(g=>Object.entries(S.kpi[g].units).forEach(([u,un])=>un.sections.forEach((s,si)=>s.items.forEach((it,ii)=>{
+  gks.forEach(g=>{
+    if(S._kpiMgrOrg!=='__all__'&&g!==S._kpiMgrOrg)return;
+    Object.entries(S.kpi[g].units).forEach(([u,un])=>un.sections.forEach((s,si)=>s.items.forEach((it,ii)=>{
     totalItems++;
     const lk=LK(g,u,si,ii);const hasScale=SL[lk]&&(SL[lk].s0||SL[lk].s100);
     const evT=it.evalType==='text'?'<span style="background:rgba(167,139,250,.15);color:var(--purple);padding:0 5px;border-radius:3px;font-size:8px;font-weight:800;border:1px solid rgba(167,139,250,.3)">정성</span>':'<span style="background:rgba(34,211,238,.1);color:var(--cyan);padding:0 5px;border-radius:3px;font-size:8px;font-weight:800;border:1px solid rgba(34,211,238,.25)">정량</span>';
     const dirT=it.direction==='desc'?'<span style="background:rgba(251,191,36,.1);color:var(--amber);padding:0 4px;border-radius:3px;font-size:8px;font-weight:700;border:1px solid rgba(251,191,36,.25)">↓감소</span>':'';
-    rows+=`<tr><td style="padding:5px 8px;font-size:10px;color:var(--t2)">${E(g)}</td><td style="padding:5px 8px;font-size:10px">${E(u)}</td><td style="padding:5px 8px;font-size:10px">${E(s.name)}</td><td style="padding:5px 8px;font-weight:700">${E(it.name)}</td><td style="padding:5px 8px;text-align:center;font-family:'JetBrains Mono',monospace">${it.pts}</td><td style="padding:5px 8px;font-size:10px">${E(it.target||'—')}</td><td style="padding:5px 8px;text-align:center">${evT} ${dirT}</td><td style="padding:5px 8px;text-align:center">${hasScale?'<span style="color:var(--green);font-size:9px;font-weight:700">✅</span>':'<span style="color:var(--t3);font-size:9px">—</span>'}</td><td style="padding:5px 8px;text-align:right"><button class="btn" style="font-size:8px;padding:1px 5px" onclick="editR('${E(g)}','${E(u)}',${si},${ii});renderAdm()">수정</button> <button class="btn btn-d" style="font-size:8px;padding:1px 5px" onclick="delR('${E(g)}','${E(u)}',${si},${ii});renderAdm()">삭제</button></td></tr>`;
-  }))));
+    rows+=`<tr><td style="padding:5px 8px;font-size:10px;color:var(--t2)">${E(S.kpi[g]?.label||g)}</td><td style="padding:5px 8px;font-size:10px">${E(u)}</td><td style="padding:5px 8px;font-size:10px">${E(s.name)}</td><td style="padding:5px 8px;font-weight:700">${E(it.name)}</td><td style="padding:5px 8px;text-align:center;font-family:'JetBrains Mono',monospace">${it.pts}</td><td style="padding:5px 8px;font-size:10px">${E(it.target||'—')}</td><td style="padding:5px 8px;text-align:center">${evT} ${dirT}</td><td style="padding:5px 8px;text-align:center">${hasScale?'<span style="color:var(--green);font-size:9px;font-weight:700">✅</span>':'<span style="color:var(--t3);font-size:9px">—</span>'}</td><td style="padding:5px 8px;text-align:right"><button class="btn" style="font-size:8px;padding:1px 5px" onclick="editR('${E(g)}','${E(u)}',${si},${ii});renderAdm()">수정</button> <button class="btn btn-d" style="font-size:8px;padding:1px 5px" onclick="delR('${E(g)}','${E(u)}',${si},${ii});renderAdm()">삭제</button></td></tr>`;
+  })));});
+  const orgBtns='<button class="org-btn'+(S._kpiMgrOrg==='__all__'?' on':'')+'" onclick="S._kpiMgrOrg=\'__all__\';renderAdm()" style="font-size:9px;padding:2px 6px">전체</button>'+gks.map(g=>'<button class="org-btn'+(S._kpiMgrOrg===g?' on':'')+'" onclick="S._kpiMgrOrg=\''+E(g)+'\';renderAdm()" style="font-size:9px;padding:2px 6px">'+E(S.kpi[g]?.label||g)+'</button>').join('');
   el.innerHTML=`<div class="adm-s"><div class="adm-st">📋 KPI 지표 일괄 관리</div>
+  <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${orgBtns}</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
     <label class="btn btn-p" style="cursor:pointer">⬆ 지표 CSV 업로드<input type="file" style="display:none" accept=".csv" onchange="uploadKpiCSV(this.files[0]);this.value=''"/></label>
     <label class="btn" style="cursor:pointer;border-color:var(--green);color:var(--green)">📊 실적 CSV 업로드<input type="file" style="display:none" accept=".csv" onchange="uploadActCSV(this.files[0]);this.value=''"/></label>
@@ -1594,8 +1600,21 @@ function openYREdit(k,name,org){
   document.getElementById('ab').innerHTML=html;
 }
 
+function yrFlushInputs(){
+  if(!_yrEditKey)return;
+  const yr=S.yearly[_yrEditKey];if(!yr)return;
+  document.querySelectorAll('#ab .ainp[onchange*="yrCellSet"]').forEach(inp=>{
+    const m=inp.getAttribute('onchange').match(/yrCellSet\((\d+),(\d+),/);
+    if(m){
+      const ri=parseInt(m[1]),ci=parseInt(m[2]);
+      if(!yr.data[ri])yr.data[ri]={};
+      yr.data[ri][ci]=inp.value;
+    }
+  });
+}
 function yrRowAdd(){
   if(!_yrEditKey)return;
+  yrFlushInputs();
   const yr=S.yearly[_yrEditKey]||(S.yearly[_yrEditKey]={rows:[],cols:YR_COLS,data:{}});
   const name=prompt('행 이름 (예: 매출액, 목표, 실적, 달성률 등)');
   if(!name)return;
@@ -1604,6 +1623,7 @@ function yrRowAdd(){
 }
 function yrRowDel(ri){
   if(!_yrEditKey||!confirm('이 행을 삭제할까요?'))return;
+  yrFlushInputs();
   const yr=S.yearly[_yrEditKey];if(!yr)return;
   yr.rows.splice(ri,1);
   // Shift data
@@ -1625,6 +1645,7 @@ function yrCellSet(ri,ci,val){
 }
 function yrSave(){
   if(!_yrEditKey)return;
+  yrFlushInputs();
   addL('5개년등록',_yrEditName);
   save();toast(_yrEditName+' 5개년 데이터 저장','s');
   renderAdm();
@@ -2757,7 +2778,7 @@ function applyRemoteData(d){
   if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
-  try{localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+  try{const _sd={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,pi:S.piPool,pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,ej:S.emailjs,t:d.t};localStorage.setItem(LS,JSON.stringify(_sd));}catch(e){}
   if(S.page==='dash')renderDash();
   if(S.page==='kpi'){renderNav();renderKPI();}
   if(S.page==='pi')renderPI();
