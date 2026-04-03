@@ -1381,64 +1381,74 @@ function generatePPTInBrowser(sel,orgData){
   const date=new Date().toLocaleDateString('ko-KR');
   const totalOrgs=gks.length;
   const totalKPI=Object.values(S.kpi).reduce((a,g)=>a+Object.values(g.units).reduce((b,u)=>b+u.sections.reduce((c,s)=>c+s.items.length,0),0),0);
+  let pageNum=0;
+  function pgN(){return++pageNum;}
 
   let html='';
 
   // Cover
   if(sel.includes('cover')){
-    html+=`<div class="rpt-slide" style="background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
-      <div style="font-size:42px;font-weight:900;margin-bottom:8px">KPI 실적 보고서</div>
-      <div style="font-size:18px;color:rgba(255,255,255,.7);margin-bottom:40px">'26년 단위조직 KPI 실적 현황</div>
-      <div style="display:flex;gap:30px">
-        <div><div style="font-size:36px;font-weight:900;color:#60a5fa">${totalOrgs}</div><div style="font-size:12px;color:rgba(255,255,255,.5)">조직</div></div>
-        <div><div style="font-size:36px;font-weight:900;color:#34d399">${totalKPI}</div><div style="font-size:12px;color:rgba(255,255,255,.5)">KPI 지표</div></div>
+    html+=`<div class="rpt-slide rpt-cover">
+      <div class="rpt-logo">SK broadband</div>
+      <div class="rpt-cover-body">
+        <div style="font-size:32px;font-weight:900;color:#111;letter-spacing:-0.5px">'26년 단위조직 KPI 실적 현황</div>
+        <div style="width:200px;height:2px;background:#333;margin:20px auto"></div>
+        <div style="font-size:16px;color:#555;margin-top:12px">( 보고서 )</div>
+        <div style="margin-top:60px;font-size:13px;color:#888">${date} 기준</div>
       </div>
-      <div style="margin-top:50px;font-size:13px;color:rgba(255,255,255,.4)">${date} 기준</div>
     </div>`;
   }
 
   // Summary
   if(sel.includes('summary')){
     html+=`<div class="rpt-slide">
-      <div class="rpt-title">전체 조직 달성률 요약</div>
-      <table class="rpt-tbl"><thead><tr><th>조직</th><th>총 배점</th><th>총 점수</th><th>달성률</th><th>입력</th></tr></thead><tbody>
-      ${orgData.map(d=>`<tr><td style="font-weight:700">${E(d.label)}</td><td style="text-align:center">${d.totalPts}점</td><td style="text-align:center;font-weight:700;color:${d.pct!=null?(d.pct>=80?'#10b981':d.pct>=60?'#f59e0b':'#ef4444'):'#999'}">${d.totalScore!=null?d.totalScore+'점':'—'}</td><td style="text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-weight:700;font-size:12px;background:${d.pct!=null?(d.pct>=80?'rgba(16,185,129,.1)':d.pct>=60?'rgba(245,158,11,.1)':'rgba(239,68,68,.1)'):'#f5f5f5'};color:${d.pct!=null?(d.pct>=80?'#10b981':d.pct>=60?'#f59e0b':'#ef4444'):'#999'}">${d.pct!=null?d.pct+'%':'—'}</span></td><td style="text-align:center;color:#888">${d.filled}/${d.total}</td></tr>`).join('')}
+      <div class="rpt-hdr"><div class="rpt-sec">Ⅰ. 전체 현황</div><div class="rpt-sub">1. 조직별 달성률 요약</div></div>
+      <table class="rpt-tbl"><thead><tr><th>조직</th><th style="width:80px">총 배점</th><th style="width:80px">총 점수</th><th style="width:80px">달성률</th><th style="width:80px">입력 현황</th></tr></thead><tbody>
+      ${orgData.map(d=>{const clr=d.pct!=null?(d.pct>=80?'#10b981':d.pct>=60?'#f59e0b':'#ef4444'):'#aaa';return`<tr><td style="font-weight:700">${E(d.label)}</td><td style="text-align:center">${d.totalPts}</td><td style="text-align:center;font-weight:700;color:${clr}">${d.totalScore!=null?d.totalScore:'—'}</td><td style="text-align:center"><span style="font-weight:800;color:${clr}">${d.pct!=null?d.pct+'%':'—'}</span></td><td style="text-align:center;color:#888">${d.filled}/${d.total}</td></tr>`;}).join('')}
       </tbody></table>
+      <div class="rpt-pn">${pgN()}</div>
     </div>`;
   }
 
   // Per-org slides
+  let orgIdx=0;
   gks.forEach(g=>{
     if(!sel.includes('org_'+g))return;
+    orgIdx++;
     const gr=S.kpi[g];
     html+=`<div class="rpt-slide">
-      <div class="rpt-title">${E(gr.label||g)} KPI 상세</div>`;
+      <div class="rpt-hdr"><div class="rpt-sec">Ⅱ. 단위조직 KPI 상세</div><div class="rpt-sub">${orgIdx}. ${E(gr.label||g)}</div></div>`;
     Object.entries(gr.units).forEach(([u,un])=>{
       un.sections.forEach((sec,si)=>{
-        html+=`<div style="margin-bottom:4px;font-size:11px;font-weight:700;color:#64748b;border-left:3px solid ${sec.type==='financial'?'#3b82f6':sec.type==='common'?'#8b5cf6':'#10b981'};padding-left:6px">${E(sec.name)}</div>
-        <table class="rpt-tbl rpt-tbl-sm"><thead><tr><th>지표명</th><th>배점</th><th>Target</th><th>실적</th><th>점수(100)</th><th>점수(배점)</th></tr></thead><tbody>`;
+        const secClr=sec.type==='financial'?'#3b82f6':sec.type==='common'?'#8b5cf6':'#10b981';
+        html+=`<div style="margin:12px 0 4px;display:flex;align-items:center;gap:6px"><div style="background:${secClr};color:#fff;padding:1px 10px;border-radius:3px;font-size:10px;font-weight:700">${E(sec.name)}</div></div>
+        <table class="rpt-tbl"><thead><tr><th style="text-align:left">지표명</th><th style="width:50px">배점</th><th>Target</th><th style="width:70px">실적</th><th style="width:60px">점수(100)</th><th style="width:65px">점수(배점)</th><th style="width:55px">달성률</th></tr></thead><tbody>`;
         sec.items.forEach((it,ii)=>{
           const k=AK(g,u,si,ii),ac=S.act[k]||'',lk=LK(g,u,si,ii);
           const s100=ac?cS100(ac,SL[lk]):null;
           const s2=ac?cFS(it.pts,ac,SL[lk],it.direction):null;
           const p2=s2!=null?Math.round(s2/it.pts*100):null;
           const tgt=it.targetValue!=null?(it.targetValue+(it.targetUnit?' '+it.targetUnit:'')):(it.target||'');
-          html+=`<tr><td style="font-weight:600">${E(it.name)}${it.evalType==='text'?' <span style="color:#8b5cf6;font-size:9px">정성</span>':''}${it.direction==='desc'?' <span style="color:#f59e0b;font-size:9px">↓</span>':''}</td><td style="text-align:center">${it.pts}</td><td style="font-size:10px">${E(tgt)}</td><td style="text-align:center;font-weight:600">${E(ac)||'—'}</td><td style="text-align:center">${s100!=null?s100+'점':'—'}</td><td style="text-align:center;font-weight:700;color:${p2!=null?(p2>=80?'#10b981':p2>=60?'#f59e0b':'#ef4444'):'#999'}">${s2!=null?s2+'점':'—'}</td></tr>`;
+          const clr=p2!=null?(p2>=80?'#10b981':p2>=60?'#f59e0b':'#ef4444'):'#aaa';
+          const tags=(it.evalType==='text'?'<span style="color:#8b5cf6;font-size:8px;margin-left:3px">[정성]</span>':'')+(it.direction==='desc'?'<span style="color:#f59e0b;font-size:8px;margin-left:3px">[↓]</span>':'');
+          html+=`<tr><td style="font-weight:600">${E(it.name)}${tags}</td><td style="text-align:center">${it.pts}</td><td style="font-size:10px;color:#555">${E(tgt)||'—'}</td><td style="text-align:center;font-weight:600">${E(ac)||'—'}</td><td style="text-align:center">${s100!=null?s100:'—'}</td><td style="text-align:center;font-weight:700;color:${clr}">${s2!=null?s2:'—'}</td><td style="text-align:center;font-weight:700;color:${clr}">${p2!=null?p2+'%':'—'}</td></tr>`;
         });
         html+=`</tbody></table>`;
       });
     });
-    html+=`</div>`;
+    html+=`<div class="rpt-pn">${pgN()}</div></div>`;
   });
 
   // Ranking
   if(sel.includes('ranking')){
     const ranked=[...orgData].filter(d=>d.pct!=null).sort((a,b)=>b.pct-a.pct);
+    const medal=['🥇','🥈','🥉'];
     html+=`<div class="rpt-slide">
-      <div class="rpt-title">조직별 달성 순위</div>
-      <table class="rpt-tbl"><thead><tr><th>순위</th><th>조직</th><th>달성률</th><th>점수</th><th>배점</th></tr></thead><tbody>
-      ${ranked.map((d,i)=>`<tr><td style="text-align:center;font-weight:900;font-size:16px;color:${i===0?'#f59e0b':i===1?'#94a3b8':i===2?'#cd7f32':'#64748b'}">${i+1}</td><td style="font-weight:700">${E(d.label)}</td><td style="text-align:center"><span style="font-size:18px;font-weight:900;color:${d.pct>=80?'#10b981':d.pct>=60?'#f59e0b':'#ef4444'}">${d.pct}%</span></td><td style="text-align:center">${d.totalScore}점</td><td style="text-align:center;color:#888">${d.totalPts}점</td></tr>`).join('')}
+      <div class="rpt-hdr"><div class="rpt-sec">Ⅲ. 분석</div><div class="rpt-sub">1. 조직별 달성 순위</div></div>
+      <table class="rpt-tbl"><thead><tr><th style="width:50px">순위</th><th>조직</th><th style="width:90px">달성률</th><th style="width:80px">점수</th><th style="width:80px">배점</th></tr></thead><tbody>
+      ${ranked.map((d,i)=>`<tr><td style="text-align:center;font-weight:900;font-size:14px">${i<3?medal[i]:i+1}</td><td style="font-weight:700">${E(d.label)}</td><td style="text-align:center;font-weight:800;font-size:14px;color:${d.pct>=80?'#10b981':d.pct>=60?'#f59e0b':'#ef4444'}">${d.pct}%</td><td style="text-align:center">${d.totalScore}</td><td style="text-align:center;color:#888">${d.totalPts}</td></tr>`).join('')}
       </tbody></table>
+      <div class="rpt-pn">${pgN()}</div>
     </div>`;
   }
 
@@ -1450,36 +1460,40 @@ function generatePPTInBrowser(sel,orgData){
       if(!ac.trim())miss.push({org:S.kpi[g]?.label||g,unit:u,sec:s.name,name:it.name,pts:it.pts});
     }))));
     html+=`<div class="rpt-slide">
-      <div class="rpt-title">미입력 현황 <span style="color:#ef4444;font-size:14px">${miss.length}건</span></div>
-      <table class="rpt-tbl rpt-tbl-sm"><thead><tr><th>조직</th><th>하위조직</th><th>섹션</th><th>지표명</th><th>배점</th></tr></thead><tbody>
-      ${miss.slice(0,30).map(m=>`<tr><td>${E(m.org)}</td><td>${E(m.unit)}</td><td>${E(m.sec)}</td><td style="font-weight:600">${E(m.name)}</td><td style="text-align:center">${m.pts}점</td></tr>`).join('')}
-      ${miss.length>30?`<tr><td colspan="5" style="text-align:center;color:#888">외 ${miss.length-30}건</td></tr>`:''}
+      <div class="rpt-hdr"><div class="rpt-sec">Ⅲ. 분석</div><div class="rpt-sub">2. 미입력 현황 <span style="color:#ef4444">(${miss.length}건)</span></div></div>
+      <table class="rpt-tbl"><thead><tr><th>조직</th><th>하위조직</th><th>섹션</th><th>지표명</th><th style="width:50px">배점</th></tr></thead><tbody>
+      ${miss.slice(0,30).map(m=>`<tr><td>${E(m.org)}</td><td>${E(m.unit)}</td><td>${E(m.sec)}</td><td style="font-weight:600">${E(m.name)}</td><td style="text-align:center">${m.pts}</td></tr>`).join('')}
+      ${miss.length>30?`<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic">외 ${miss.length-30}건</td></tr>`:''}
       </tbody></table>
+      <div class="rpt-pn">${pgN()}</div>
     </div>`;
   }
 
-  // Open in new window for print
+  // Open in new window
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>KPI 보고서</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
   <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Noto Sans KR',sans-serif;background:#e2e8f0}
-  .rpt-slide{width:960px;min-height:540px;margin:20px auto;padding:40px 50px;background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);page-break-after:always;position:relative}
-  .rpt-title{font-size:22px;font-weight:900;color:#1e293b;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #e2e8f0}
-  .rpt-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px}
-  .rpt-tbl th{padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:700;color:#475569;text-align:left;font-size:10px;text-transform:uppercase}
-  .rpt-tbl td{padding:6px 10px;border:1px solid #e2e8f0;color:#334155}
-  .rpt-tbl tr:hover{background:#f8fafc}
-  .rpt-tbl-sm{font-size:11px}
-  .rpt-tbl-sm th,.rpt-tbl-sm td{padding:4px 8px}
-  @media print{body{background:#fff}.rpt-slide{box-shadow:none;margin:0;border-radius:0;width:100%}}
+  body{font-family:'Noto Sans KR',sans-serif;background:#e8e8e8;color:#222}
+  .rpt-slide{width:960px;min-height:680px;margin:24px auto;padding:0;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.12);page-break-after:always;position:relative;overflow:hidden}
+  .rpt-cover{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:680px}
+  .rpt-logo{position:absolute;top:28px;left:36px;font-size:14px;font-weight:700;color:#e8520e;letter-spacing:0.5px}
+  .rpt-cover-body{margin-top:-20px}
+  .rpt-hdr{padding:32px 48px 0;margin-bottom:20px}
+  .rpt-sec{font-size:18px;font-weight:900;color:#111;padding-bottom:8px;border-bottom:2px solid #222}
+  .rpt-sub{font-size:14px;font-weight:700;color:#333;margin-top:6px;text-align:right;border-bottom:1px solid #ccc;padding-bottom:4px}
+  .rpt-tbl{width:calc(100% - 96px);margin:0 48px 14px;border-collapse:collapse;font-size:11px}
+  .rpt-tbl th{padding:7px 10px;background:#d9d9d9;border:1px solid #bbb;font-weight:700;color:#333;text-align:left;font-size:10px}
+  .rpt-tbl td{padding:5px 10px;border:1px solid #ccc;color:#333}
+  .rpt-tbl tr:nth-child(even){background:#fafafa}
+  .rpt-pn{position:absolute;bottom:20px;right:48px;font-size:11px;color:#999}
+  @media print{body{background:#fff}.rpt-slide{box-shadow:none;margin:0;width:100%;min-height:auto}}
   .no-print{text-align:center;padding:16px}
-  
-</style></head><body>
-  <div class="no-print" style="background:#1e293b;color:#fff;padding:14px 20px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center">
+  </style></head><body>
+  <div class="no-print" style="background:#333;color:#fff;padding:12px 24px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center">
     <span style="font-weight:700">📑 KPI 보고서 미리보기 — ${sel.length}개 장표</span>
-    <div><button onclick="document.querySelectorAll('.no-print').forEach(e=>e.style.display='none');window.print();document.querySelectorAll('.no-print').forEach(e=>e.style.display='')" style="padding:8px 20px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">🖨️ 인쇄 / PDF 저장</button></div>
+    <div><button onclick="document.querySelectorAll('.no-print').forEach(e=>e.style.display='none');window.print();document.querySelectorAll('.no-print').forEach(e=>e.style.display='')" style="padding:8px 20px;background:#e8520e;color:#fff;border:none;border-radius:4px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">🖨️ 인쇄 / PDF 저장</button></div>
   </div>
   ${html}</body></html>`);
   w.document.close();
