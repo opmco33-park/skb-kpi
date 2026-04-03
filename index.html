@@ -2120,15 +2120,25 @@ function renderPI(){
 
 function renderPIPool(){
   const contentEl=document.getElementById('pi-content');
-  const vo=visibleOrgs().filter(g=>g!=='전사KPI');
+  const vo=visibleOrgs();
   const isAll=S.piOrg==='__all__';
   const orgs=isAll?vo:[S.piOrg];
   const ed=isAll?S.isAdmin:canEdit(S.piOrg);
   const label=isAll?'전체 PI Pool':(S.kpi[S.piOrg]?.label||S.piOrg);
 
-  // Merge pools from selected orgs
+  // Merge pools from ALL selected orgs (including 전사KPI)
   let pool=[];
   orgs.forEach(g=>{let p=S.piPool[g]||[];if(!Array.isArray(p)){const ks=Object.keys(p);p=ks.every(k=>/^\d+$/.test(k))?ks.sort((a,b)=>+a-+b).map(k=>p[k]):[];S.piPool[g]=p;}p.forEach(item=>pool.push({...item,_org:g}));});
+
+  // Deduplicate: if same PI name exists in both 전사KPI and another org, show once with org tags
+  if(isAll){
+    const seen={};const deduped=[];
+    pool.forEach(item=>{
+      const key=item.name+'___'+item.category;
+      if(!seen[key]){seen[key]=item;deduped.push(item);}
+    });
+    pool=deduped;
+  }
 
   const piOrgMap={};
   vo.forEach(og=>{
@@ -2136,20 +2146,39 @@ function renderPIPool(){
     p.forEach(item=>{if(!piOrgMap[item.name])piOrgMap[item.name]=new Set();piOrgMap[item.name].add(S.kpi[og]?.label||og);});
   });
 
-  const grouped={};PI_CATEGORIES().forEach(c=>grouped[c]=[]);
   const q=(S._piFilter||'').toLowerCase();
+
+  // Build header + search (only if not already present)
+  const hasSearch=document.getElementById('pi-search');
+  if(!hasSearch){
+    let hdr=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div><span style="font-size:15px;font-weight:900">${E(label)}</span><span style="font-size:10px;color:var(--t3);margin-left:6px">${pool.length}개</span></div>
+      ${!isAll&&ed?`<div style="display:flex;gap:4px"><button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="addPI('${E(S.piOrg)}')">+ PI</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="bulkAddPI('${E(S.piOrg)}')">⬆ 일괄등록</button></div>`:''}
+    </div><div style="margin-bottom:8px"><input class="sinp" id="pi-search" placeholder="🔍 PI 검색..." style="font-size:10px;padding:4px 8px" oninput="piSearchDebounce(this.value)" value="${E(S._piFilter||'')}"/></div><div id="pi-list-area"></div>`;
+    contentEl.innerHTML=hdr;
+  }else{
+    // Update count
+    const countEl=contentEl.querySelector('span[style*="font-weight:900"]');
+    if(countEl){
+      const next=countEl.nextElementSibling;
+      if(next)next.textContent=pool.length+'개';
+    }
+  }
+
+  // Build PI list HTML (only the list, not the search input)
+  const listEl=document.getElementById('pi-list-area');
+  if(!listEl)return;
+
+  const grouped={};PI_CATEGORIES().forEach(c=>grouped[c]=[]);
   pool.forEach(item=>{
     if(q&&!item.name.toLowerCase().includes(q)&&!(item.category||'').toLowerCase().includes(q)&&!(item.owner||'').toLowerCase().includes(q))return;
     const c=item.category||'기타';if(!grouped[c])grouped[c]=[];grouped[c].push(item);
   });
 
-  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-    <div><span style="font-size:15px;font-weight:900">${E(label)}</span><span style="font-size:10px;color:var(--t3);margin-left:6px">${pool.length}개</span></div>
-    ${!isAll&&ed?`<div style="display:flex;gap:4px"><button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="addPI('${E(S.piOrg)}')">+ PI</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="bulkAddPI('${E(S.piOrg)}')">⬆ 일괄등록</button></div>`:''}
-  </div><div style="margin-bottom:8px"><input class="sinp" id="pi-search" placeholder="🔍 PI 검색..." style="font-size:10px;padding:4px 8px" oninput="piSearchDebounce(this.value)" value="${E(S._piFilter||'')}"/></div>`;
-
-  if(!pool.length){
-    h+=`<div style="text-align:center;padding:20px;color:var(--t3);font-size:11px">등록된 PI 없음</div>`;
+  let h='';
+  const totalFiltered=Object.values(grouped).reduce((a,arr)=>a+arr.length,0);
+  if(!totalFiltered){
+    h=`<div style="text-align:center;padding:20px;color:var(--t3);font-size:11px">${q?'검색 결과 없음':'등록된 PI 없음'}</div>`;
   }else{
     PI_CATEGORIES().forEach(cat=>{
       const items=grouped[cat];if(!items||!items.length)return;
@@ -2174,14 +2203,18 @@ function renderPIPool(){
       h+=`</div>`;
     });
   }
-  contentEl.innerHTML=h;
-  // Restore search focus
-  const si=document.getElementById('pi-search');
-  if(si&&S._piFilter){si.focus();si.setSelectionRange(si.value.length,si.value.length);}
+  listEl.innerHTML=h;
 }
 
 let _piSearchTimer=null;
-function piSearchDebounce(q){S._piFilter=q;clearTimeout(_piSearchTimer);_piSearchTimer=setTimeout(()=>renderPIPool(),200);}
+function piSearchDebounce(q){
+  S._piFilter=q;
+  clearTimeout(_piSearchTimer);
+  _piSearchTimer=setTimeout(()=>{
+    // Only update the list area, NOT the search input
+    renderPIPool();
+  },300);
+}
 function filterPIPool(q){S._piFilter=q;renderPIPool();}
 
 // ── PI Scoring View ──
