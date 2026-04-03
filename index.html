@@ -2670,8 +2670,17 @@ async function doPwChange(){
 // ══════════════════════════════════════════════════════════════
 let _fb=null,_fbRef=null,_fbReady=false,_fbSyncing=false;
 const FB_CONFIG_KEY='skb_kpi_fb_config';
+// ── EMBEDDED FIREBASE CONFIG ──
+// 관리자가 여기에 Firebase 설정을 입력하면, 모든 사용자가 별도 설정 없이 접속 가능합니다.
+// 설정 방법: 아래 null을 실제 Firebase 값으로 교체하세요.
+// 예시: const EMBEDDED_FB_CONFIG = { apiKey:'AIzaSy...', databaseURL:'https://your-project.firebaseio.com', projectId:'your-project-id' };
+const EMBEDDED_FB_CONFIG = null;
 
-function getFBConfig(){try{return JSON.parse(localStorage.getItem(FB_CONFIG_KEY));}catch(e){return null;}}
+function getFBConfig(){
+  try{const saved=JSON.parse(localStorage.getItem(FB_CONFIG_KEY));if(saved&&saved.apiKey)return saved;}catch(e){}
+  if(EMBEDDED_FB_CONFIG&&EMBEDDED_FB_CONFIG.apiKey)return EMBEDDED_FB_CONFIG;
+  return null;
+}
 function setFBConfig(cfg){localStorage.setItem(FB_CONFIG_KEY,JSON.stringify(cfg));}
 
 function initFirebase(cfg){
