@@ -2195,18 +2195,10 @@ function renderPIPool(){
   // Build header + search (only if not already present)
   const hasSearch=document.getElementById('pi-search');
   if(!hasSearch){
-    let hdr=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div><span style="font-size:15px;font-weight:900">${E(label)}</span><span style="font-size:10px;color:var(--t3);margin-left:6px">${pool.length}개</span></div>
-      ${ed?`<div style="display:flex;gap:4px"><button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="addPI('${E(S.piOrg)}')">+ PI</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="bulkAddPI('${E(S.piOrg)}')">⬆ 일괄등록</button></div>`:''}
-    </div><div style="margin-bottom:8px"><input class="sinp" id="pi-search" placeholder="🔍 PI 검색..." style="font-size:10px;padding:4px 8px" oninput="piSearchDebounce(this.value)" value="${E(S._piFilter||'')}"/></div><div id="pi-list-area"></div>`;
+    let hdr=`${ed?`<div style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:6px"><button class="btn btn-p" style="font-size:9px;padding:3px 8px" onclick="addPI('${E(S.piOrg)}')">+ PI</button><button class="btn" style="font-size:9px;padding:3px 8px" onclick="bulkAddPI('${E(S.piOrg)}')">⬆ 일괄등록</button></div>`:''}<div style="margin-bottom:8px"><input class="sinp" id="pi-search" placeholder="🔍 PI 검색..." style="font-size:10px;padding:4px 8px" oninput="piSearchDebounce(this.value)" value="${E(S._piFilter||'')}"/></div><div id="pi-list-area"></div>`;
     contentEl.innerHTML=hdr;
   }else{
-    // Update count
-    const countEl=contentEl.querySelector('span[style*="font-weight:900"]');
-    if(countEl){
-      const next=countEl.nextElementSibling;
-      if(next)next.textContent=pool.length+'개';
-    }
+    // Search already present, skip re-render of header
   }
 
   // Build PI list HTML (only the list, not the search input)
