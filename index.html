@@ -1503,7 +1503,7 @@ function generatePPTInBrowser(sel,orgData){
 }
 function buildPPTScript(){return'';}
 
-function aSysData(el){const ds=(JSON.stringify({act:S.act,ascr:S.ascr,SL,kpi:S.kpi}).length/1024).toFixed(1);const tO=Object.keys(S.kpi).length;const tI=Object.values(S.kpi).reduce((a,g)=>a+Object.values(g.units).reduce((b,u)=>b+u.sections.reduce((c,s)=>c+s.items.length,0),0),0);const fA=Object.values(S.act).filter(v=>v&&v.trim()).length;const fbCfg=getFBConfig();el.innerHTML=`<div class="adm-s"><div class="adm-st">💾 시스템 현황</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px"><div class="chip"><div class="chip-l">용량</div><div class="chip-v" style="font-size:13px;color:var(--blue)">${ds}KB</div><div class="chip-m">/ ~4,500KB</div></div><div class="chip"><div class="chip-l">조직</div><div class="chip-v" style="font-size:13px;color:var(--green)">${tO}</div></div><div class="chip"><div class="chip-l">KPI</div><div class="chip-v" style="font-size:13px;color:var(--cyan)">${tI}</div></div><div class="chip"><div class="chip-l">실적입력</div><div class="chip-v" style="font-size:13px;color:var(--amber)">${fA}</div><div class="chip-m">/ ${tI}</div></div><div class="chip"><div class="chip-l">이력</div><div class="chip-v" style="font-size:13px;color:var(--purple)">${S.log.length}</div></div><div class="chip"><div class="chip-l">동기화</div><div class="chip-v" style="font-size:13px;color:${_fbReady?'var(--green)':'var(--t3)'}">${_fbReady?'✅':'오프라인'}</div></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-p" onclick="exportAll()">📤 JSON</button><button class="btn btn-p" onclick="exportCSV()">📊 Excel</button><button class="btn btn-p" onclick="exportLog()">📝 이력</button><button class="btn" style="border-color:var(--red);color:var(--red)" onclick="if(confirm('이력 초기화?')){S.log=[];save();toast('초기화','i');}">🗑이력초기화</button><button class="btn btn-d" onclick="clearAll()">🗑전체초기화</button></div></div><div class="adm-s"><div class="adm-st">🔥 Firebase 실시간 동기화</div><div class="adm-ss">${_fbReady?'<span style="color:var(--green);font-weight:700">연결됨</span> — '+fbCfg?.projectId:'<span style="color:var(--t3)">오프라인 모드</span> — 복수 PC 동기화를 사용하려면 Firebase를 설정하세요'}</div><div style="display:grid;gap:6px;margin-top:8px"><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">API Key</div><input class="sinp" id="sys-fb-apikey" value="${fbCfg?.apiKey||''}" placeholder="AIzaSy..."/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Database URL</div><input class="sinp" id="sys-fb-dburl" value="${fbCfg?.databaseURL||''}" placeholder="https://your-project.firebaseio.com"/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Project ID</div><input class="sinp" id="sys-fb-projid" value="${fbCfg?.projectId||''}" placeholder="your-project-id"/></div><div style="display:flex;gap:6px"><button class="btn btn-p" onclick="sysUpdateFB()">연결/업데이트</button><button class="btn" onclick="testFBConnection()">연결 테스트</button>${_fbReady?'<button class="btn" onclick="sysDisconnectFB()">연결 해제</button>':''}</div></div></div>`;}
+function aSysData(el){const ds=(JSON.stringify({act:S.act,ascr:S.ascr,SL,kpi:S.kpi}).length/1024).toFixed(1);const tO=Object.keys(S.kpi).length;const tI=Object.values(S.kpi).reduce((a,g)=>a+Object.values(g.units).reduce((b,u)=>b+u.sections.reduce((c,s)=>c+s.items.length,0),0),0);const fA=Object.values(S.act).filter(v=>v&&v.trim()).length;const fbCfg=getFBConfig();el.innerHTML=`<div class="adm-s"><div class="adm-st">💾 시스템 현황</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px"><div class="chip"><div class="chip-l">용량</div><div class="chip-v" style="font-size:13px;color:var(--blue)">${ds}KB</div><div class="chip-m">/ ~4,500KB</div></div><div class="chip"><div class="chip-l">조직</div><div class="chip-v" style="font-size:13px;color:var(--green)">${tO}</div></div><div class="chip"><div class="chip-l">KPI</div><div class="chip-v" style="font-size:13px;color:var(--cyan)">${tI}</div></div><div class="chip"><div class="chip-l">실적입력</div><div class="chip-v" style="font-size:13px;color:var(--amber)">${fA}</div><div class="chip-m">/ ${tI}</div></div><div class="chip"><div class="chip-l">이력</div><div class="chip-v" style="font-size:13px;color:var(--purple)">${S.log.length}</div></div><div class="chip"><div class="chip-l">동기화</div><div class="chip-v" style="font-size:13px;color:${_fbReady?'var(--green)':'var(--t3)'}">${_fbReady?'✅':'오프라인'}</div></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-p" onclick="exportAll()">📤 JSON</button><button class="btn btn-p" onclick="exportCSV()">📊 Excel</button><button class="btn btn-p" onclick="exportLog()">📝 이력</button><button class="btn" style="border-color:var(--red);color:var(--red)" onclick="if(confirm('이력 초기화?')){S.log=[];save();toast('초기화','i');}">🗑이력초기화</button><button class="btn btn-d" onclick="clearAll()">🗑전체초기화</button></div></div><div class="adm-s"><div class="adm-st">🔥 Firebase 실시간 동기화</div><div class="adm-ss">${_fbReady?'<span style="color:var(--green);font-weight:700">연결됨</span> — '+fbCfg?.projectId:'<span style="color:var(--t3)">오프라인 모드</span> — 복수 PC 동기화를 사용하려면 Firebase를 설정하세요'}</div><div style="display:grid;gap:6px;margin-top:8px"><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">API Key</div><input class="sinp" id="sys-fb-apikey" value="${fbCfg?.apiKey||''}" placeholder="AIzaSy..."/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Database URL</div><input class="sinp" id="sys-fb-dburl" value="${fbCfg?.databaseURL||''}" placeholder="https://your-project.firebaseio.com"/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Project ID</div><input class="sinp" id="sys-fb-projid" value="${fbCfg?.projectId||''}" placeholder="your-project-id"/></div><div style="display:flex;gap:6px"><button class="btn btn-p" onclick="sysUpdateFB()">연결/업데이트</button><button class="btn" onclick="testFBConnection()">연결 테스트</button><button class="btn" onclick="copyFBShareURL()" style="border-color:var(--green);color:var(--green)">📋 공유 URL 복사</button>${_fbReady?'<button class="btn" onclick="sysDisconnectFB()">연결 해제</button>':''}</div></div></div>`;}
 
 // ── 10. YEARLY DATA (5개년 실적) ──
 const YR_COLS=['Y-3','Y-2','Y-1','Y','Y+1','Y+2'];
@@ -2639,6 +2639,11 @@ function doBulkAddPI(g){
 }
 
 // ── PASSWORD CHANGE (all users) ──
+function copyFBShareURL(){
+  const url=getFBShareURL();
+  if(!url){toast('Firebase 설정이 없습니다','e');return;}
+  navigator.clipboard.writeText(url).then(()=>toast('공유 URL이 클립보드에 복사되었습니다\n이 URL을 다른 사용자에게 전달하세요','s')).catch(()=>{prompt('아래 URL을 복사하여 공유하세요:',url);});
+}
 function openManual(){
   const m=document.createElement('div');m.className='modal';m.id='manual-m';m.style.display='flex';
   m.onclick=e=>{if(e.target===m)m.remove();};
@@ -2705,18 +2710,49 @@ const FB_CONFIG_KEY='skb_kpi_fb_config';
 // 관리자가 여기에 Firebase 설정을 입력하면, 모든 사용자가 별도 설정 없이 접속 가능합니다.
 // 설정 방법: 아래 null을 실제 Firebase 값으로 교체하세요.
 // 예시: const EMBEDDED_FB_CONFIG = { apiKey:'AIzaSy...', databaseURL:'https://your-project.firebaseio.com', projectId:'your-project-id' };
-const EMBEDDED_FB_CONFIG = null;
+const EMBEDDED_FB_CONFIG = {apiKey:'AIzaSyCaxvRTs5SwmFMmnSNnN5YqbEthZMWNiSs',databaseURL:'https://skb-kpi-default-rtdb.asia-southeast1.firebasedatabase.app',projectId:'skb-kpi'};
 
 function getFBConfig(){
+  // 1. URL 파라미터에서 Firebase config 확인 (?fb=BASE64)
+  try{
+    const url=new URL(window.location.href);
+    const fbParam=url.searchParams.get('fb');
+    if(fbParam){
+      const cfg=JSON.parse(atob(fbParam));
+      if(cfg&&cfg.apiKey){setFBConfig(cfg);return cfg;}
+    }
+  }catch(e){}
+  // 2. localStorage에서 확인
   try{const saved=JSON.parse(localStorage.getItem(FB_CONFIG_KEY));if(saved&&saved.apiKey)return saved;}catch(e){}
+  // 3. HTML 임베드 값 확인
   if(EMBEDDED_FB_CONFIG&&EMBEDDED_FB_CONFIG.apiKey)return EMBEDDED_FB_CONFIG;
   return null;
+}
+function getFBShareURL(){
+  const cfg=getFBConfig();
+  if(!cfg)return null;
+  const b64=btoa(JSON.stringify({apiKey:cfg.apiKey,databaseURL:cfg.databaseURL,projectId:cfg.projectId}));
+  return window.location.origin+window.location.pathname+'?fb='+b64;
 }
 function setFBConfig(cfg){localStorage.setItem(FB_CONFIG_KEY,JSON.stringify(cfg));}
 
 function initFirebase(cfg){
   try{
     if(_fb)return true;
+    if(typeof firebase==='undefined'){
+      console.warn('Firebase SDK not loaded — retrying...');
+      updateFBStatus('error');
+      // Retry after SDK loads
+      const retry=setInterval(()=>{
+        if(typeof firebase!=='undefined'){
+          clearInterval(retry);
+          initFirebase(cfg);
+          if(_fbReady){loadFromFirebase().then(()=>{ensureDefaultAdmin();ensureAdminPwH();});}
+        }
+      },1000);
+      setTimeout(()=>clearInterval(retry),10000);
+      return false;
+    }
     const app=firebase.initializeApp({apiKey:cfg.apiKey,databaseURL:cfg.databaseURL,projectId:cfg.projectId});
     _fb=firebase.database();
     _fbRef=_fb.ref('skb_kpi_data');
@@ -2906,6 +2942,9 @@ function saveFBConfig(){
     msgEl.style.color='var(--green)';msgEl.textContent='Firebase 연결 성공!';
     setTimeout(()=>{
       document.getElementById('fb-setup-m').style.display='none';
+      // Show share URL
+      const shareURL=getFBShareURL();
+      if(shareURL)toast('공유 URL이 클립보드에 복사되었습니다','s');
       document.getElementById('login-gate').style.display='flex';
       // Push current data to Firebase if it exists
       if(Object.keys(S.kpi).length)saveToFirebase();
