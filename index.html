@@ -2845,47 +2845,39 @@ function switchYear(targetYear){
   if(targetYear===S.activeYear)return;
   const prevYear=S.activeYear;
 
-  // 1. Save current year data as snapshot (always, to preserve latest state)
+  // 1. Save current year data as snapshot
   saveCurrentYearSnapshot(prevYear);
 
   // 2. Load target year
-  if(targetYear===CURRENT_YEAR){
-    // Load from main data (current year = live data)
-    const snap=S.yearSnapshots[CURRENT_YEAR];
-    if(snap){
-      if(snap.kpi)S.kpi=JSON.parse(JSON.stringify(snap.kpi));
-      if(snap.act)S.act=JSON.parse(JSON.stringify(snap.act));
-      if(snap.SL){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));}
-      if(snap.pi)S.piPool=JSON.parse(JSON.stringify(snap.pi));
-      if(snap.cm)S.comments=JSON.parse(JSON.stringify(snap.cm));
-      if(snap.tg)S.tags=JSON.parse(JSON.stringify(snap.tg));
-    }
+  const snap=S.yearSnapshots[targetYear];
+  if(snap){
+    if(snap.kpi)S.kpi=JSON.parse(JSON.stringify(snap.kpi));else S.kpi={};
+    if(snap.act)S.act=JSON.parse(JSON.stringify(snap.act));else S.act={};
+    if(snap.SL){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));}else{Object.keys(SL).forEach(k=>delete SL[k]);}
+    if(snap.pi)S.piPool=JSON.parse(JSON.stringify(snap.pi));else S.piPool={};
+    if(snap.cm)S.comments=JSON.parse(JSON.stringify(snap.cm));else S.comments={};
+    if(snap.tg)S.tags=JSON.parse(JSON.stringify(snap.tg));else S.tags={};
   }else{
-    // Load from snapshot
-    const snap=S.yearSnapshots[targetYear];
-    if(snap){
-      if(snap.kpi)S.kpi=JSON.parse(JSON.stringify(snap.kpi));
-      if(snap.act)S.act=JSON.parse(JSON.stringify(snap.act));
-      if(snap.SL){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));}
-      if(snap.pi)S.piPool=JSON.parse(JSON.stringify(snap.pi));
-      if(snap.cm)S.comments=JSON.parse(JSON.stringify(snap.cm));
-      if(snap.tg)S.tags=JSON.parse(JSON.stringify(snap.tg));
-    }else{
-      // No snapshot for this year: start empty
-      S.kpi={};S.act={};Object.keys(SL).forEach(k=>delete SL[k]);S.piPool={};S.comments={};S.tags={};
-      toast(targetYear+'년 데이터가 없습니다. 관리자가 데이터를 등록하거나 CSV를 업로드하세요.','i');
-    }
+    S.kpi={};S.act={};Object.keys(SL).forEach(k=>delete SL[k]);S.piPool={};S.comments={};S.tags={};
   }
 
   S.activeYear=targetYear;
+  // Reset nav selection for new year's orgs
+  const gks=ordKeys();
+  if(gks.length){S.aGrp=gks[0];S.aUnit=Object.keys(S.kpi[gks[0]]?.units||{})[0]||null;}else{S.aGrp=null;S.aUnit=null;}
+  
   save();
 
-  // Update UI
+  // Update UI safely
   initYearSelector();
   updateYearBadge();
-  renderAll();
-  go(S.page||'dash');
-  toast(targetYear+'년 데이터로 전환','s');
+  try{renderAll();}catch(e){console.warn('renderAll error on year switch:',e);}
+  // Ensure admin tab stays visible for admins
+  updateAuthUI();
+  // Navigate to dash (safest page)
+  go('dash');
+  if(!snap)toast(targetYear+'년 데이터가 없습니다. 관리자 콘솔에서 CSV 업로드 또는 직접 등록하세요.','i');
+  else toast(targetYear+'년 데이터로 전환','s');
 }
 
 function saveCurrentYearSnapshot(year){
