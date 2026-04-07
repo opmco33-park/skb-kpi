@@ -631,8 +631,8 @@ function exportCSV(){const vOrgs=new Set(visibleOrgs());let c='조직명,하위�
 // ══════════════════════════════════════════════════════════════
 // SCORE CALC
 // ══════════════════════════════════════════════════════════════
-function cFS(pts,ac,lv,dir){if(!ac||!ac.trim())return null;const v=parseFloat(ac.replace(/[^0-9.\-]/g,''));if(isNaN(v))return null;if(lv&&(lv.s0!==''||lv.s100!=='')){const l0=parseFloat(lv.s0||'0'),l100=parseFloat(lv.s100||'100'),l60=parseFloat(lv.s60||''),l80=parseFloat(lv.s80||''),l90=parseFloat(lv.s90||'');if(!isNaN(l100)&&!isNaN(l0)&&l100!==l0){const rng=l100-l0;const nv=(v-l0)/rng;const n60=!isNaN(l60)?(l60-l0)/rng:NaN;const n80=!isNaN(l80)?(l80-l0)/rng:NaN;const n90=!isNaN(l90)?(l90-l0)/rng:NaN;let r;if(nv>=1)r=1;else if(!isNaN(n90)&&n90!==1&&nv>=n90)r=.9+.1*(nv-n90)/(1-n90);else if(!isNaN(n80)&&nv>=n80){const top=!isNaN(n90)&&n90!==n80?n90:1;r=.8+(!isNaN(n90)?.1:.2)*(nv-n80)/(top-n80);}else if(!isNaN(n60)&&nv>=n60){const top=!isNaN(n80)&&n80!==n60?n80:1;r=.6+(!isNaN(n80)?.2:.4)*(nv-n60)/(top-n60);}else if(nv>0){const top=!isNaN(n60)&&n60>0?n60:1;r=.6*nv/top;}else r=0;return Math.round(pts*Math.max(0,Math.min(1.2,r)));}}if(dir==='desc')return Math.min(Math.round(pts*Math.max(0,1-v/100)),pts);return Math.min(Math.round(pts*Math.max(0,v)/100),pts);}
-function cS100(ac,lv){if(!ac||!ac.trim())return null;const v=parseFloat(ac.replace(/[^0-9.\-]/g,''));if(isNaN(v))return null;if(lv&&lv.s100!==''&&lv.s0!==''){const l0=parseFloat(lv.s0||'0'),l100=parseFloat(lv.s100||'100');if(!isNaN(l0)&&!isNaN(l100)&&l100!==l0)return Math.round(Math.max(0,Math.min(120,(v-l0)/(l100-l0)*100)));}return Math.round(Math.max(0,Math.min(120,v)));}
+function cFS(pts,ac,lv,dir){if(!ac||!ac.trim())return null;const v=parseFloat(ac.replace(/[^0-9.\-]/g,''));if(isNaN(v))return null;if(lv&&(lv.s0!==''||lv.s100!=='')){const l0=parseFloat(lv.s0||'0'),l100=parseFloat(lv.s100||'100'),l60=parseFloat(lv.s60||''),l80=parseFloat(lv.s80||''),l90=parseFloat(lv.s90||'');if(!isNaN(l100)&&!isNaN(l0)&&l100!==l0){const rng=l100-l0;const nv=(v-l0)/rng;const n60=!isNaN(l60)?(l60-l0)/rng:NaN;const n80=!isNaN(l80)?(l80-l0)/rng:NaN;const n90=!isNaN(l90)?(l90-l0)/rng:NaN;let r;if(nv>=1)r=nv;else if(!isNaN(n90)&&n90!==1&&nv>=n90)r=.9+.1*(nv-n90)/(1-n90);else if(!isNaN(n80)&&nv>=n80){const top=!isNaN(n90)&&n90!==n80?n90:1;r=.8+(!isNaN(n90)?.1:.2)*(nv-n80)/(top-n80);}else if(!isNaN(n60)&&nv>=n60){const top=!isNaN(n80)&&n80!==n60?n80:1;r=.6+(!isNaN(n80)?.2:.4)*(nv-n60)/(top-n60);}else if(nv>0){const top=!isNaN(n60)&&n60>0?n60:1;r=.6*nv/top;}else r=0;return Math.round(pts*Math.max(0,Math.min(1.5,r)));}}if(dir==='desc')return Math.round(pts*Math.max(0,Math.min(1.5,1-v/100)));return Math.round(pts*Math.max(0,Math.min(1.5,v/100)));}
+function cS100(ac,lv){if(!ac||!ac.trim())return null;const v=parseFloat(ac.replace(/[^0-9.\-]/g,''));if(isNaN(v))return null;if(lv&&lv.s100!==''&&lv.s0!==''){const l0=parseFloat(lv.s0||'0'),l100=parseFloat(lv.s100||'100');if(!isNaN(l0)&&!isNaN(l100)&&l100!==l0)return Math.round(Math.max(0,(v-l0)/(l100-l0)*100));}return Math.round(Math.max(0,v));}
 function isc(g,u,s,i){const it=S.kpi[g]?.units[u]?.sections[s]?.items[i];if(!it)return null;if(it.evalType==='text')return it.manualScore!=null?it.manualScore:null;const ac=S.act[AK(g,u,s,i)]||'';if(!ac.trim())return null;return cFS(it.pts,ac,SL[LK(g,u,s,i)],it.direction);}
 function ssc(g,u,s){if(!S.kpi[g]?.units[u]?.sections[s])return null;let t=0,a=false;S.kpi[g].units[u].sections[s].items.forEach((_,i)=>{const x=isc(g,u,s,i);if(x!=null){t+=x;a=true;}});return a?t:null;}
 function utsc(g,u){if(!S.kpi[g]?.units[u])return null;let t=0,a=false;S.kpi[g].units[u].sections.forEach((_,s)=>{const x=ssc(g,u,s);if(x!=null){t+=x;a=true;}});return a?t:null;}
@@ -3124,11 +3124,11 @@ function applyRemoteData(d){
   if(d.oo)d.oo=fixArr(d.oo);if(d.wg)d.wg=fixArr(d.wg);if(d.al)d.al=fixArr(d.al);if(d.log)d.log=fixArr(d.log);
   if(d.kpi)d.kpi=fixKpi(d.kpi);
   if(d.pi)d.pi=fixPi(d.pi);
-  if(d.act){const c=stripP(d.act);if(Object.keys(c).length)S.act=c;}
+  if(d.act){const c=fbKeyRestore(stripP(d.act));if(Object.keys(c).length)S.act=c;}
   if(d.ascr){const c=stripP(d.ascr);if(Object.keys(c).length)S.ascr=c;}
-  if(d.SL){const c=stripP(d.SL);if(Object.keys(c).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,c);}}
+  if(d.SL){const c=fbKeyRestore(stripP(d.SL));if(Object.keys(c).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,c);}}
   if(d.kpi){const c=stripP(d.kpi);if(Object.keys(c).length)S.kpi=c;}
-  if(d.users){const c=stripP(d.users);if(Object.keys(c).length){Object.values(c).forEach(u=>{if(u.orgs){u.orgs=Array.isArray(u.orgs)?u.orgs.filter(x=>x&&x!=='_none'):[];} else u.orgs=[];if(u.perms){const p=stripP(u.perms);u.perms=p||{};} else u.perms={};});S.users=c;}}
+  if(d.users){let c=stripP(d.users);c=fbKeyRestore(c);if(Object.keys(c).length){Object.values(c).forEach(u=>{if(u.orgs){u.orgs=Array.isArray(u.orgs)?u.orgs.filter(x=>x&&x!=='_none'):[];} else u.orgs=[];if(u.perms){const p=stripP(u.perms);u.perms=p||{};} else u.perms={};});S.users=c;}}
   if(d.oo&&Array.isArray(d.oo)){const c=d.oo.filter(x=>x&&x!=='_');if(c.length)S.orgOrder=c;}
   if(d.ann)S.announcement=d.ann;
   if(d.wg&&Array.isArray(d.wg)){const c=d.wg.filter(x=>x&&!(x._===0));if(c.length)S.widgets=c;}
@@ -3157,6 +3157,26 @@ function applyRemoteData(d){
   renderAnn();
 }
 
+// Firebase key sanitization (. $ # [ ] / are forbidden in keys)
+function fbKeySafe(obj){
+  if(!obj||typeof obj!=='object'||Array.isArray(obj))return obj;
+  const out={};
+  Object.entries(obj).forEach(([k,v])=>{
+    const sk=k.replace(/\./g,'__dot__').replace(/\$/g,'__dlr__').replace(/#/g,'__hsh__').replace(/\[/g,'__lb__').replace(/]/g,'__rb__').replace(/\//g,'__sl__');
+    out[sk]=v;
+  });
+  return out;
+}
+function fbKeyRestore(obj){
+  if(!obj||typeof obj!=='object'||Array.isArray(obj))return obj;
+  const out={};
+  Object.entries(obj).forEach(([k,v])=>{
+    const rk=k.replace(/__dot__/g,'.').replace(/__dlr__/g,'$').replace(/__hsh__/g,'#').replace(/__lb__/g,'[').replace(/__rb__/g,']').replace(/__sl__/g,'/');
+    out[rk]=v;
+  });
+  return out;
+}
+
 async function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
   _fbSyncing=true;
@@ -3167,7 +3187,7 @@ async function saveToFirebase(){
     try{const snap=await _fbRef.child('users').once('value');const fbUsers=snap.val();if(fbUsers){const fbCount=Object.keys(fbUsers).filter(k=>k!=='_').length;if(fbCount>_uCount){console.warn('saveToFirebase blocked: local users('+_uCount+') < Firebase('+fbCount+')');_fbSyncing=false;return;}}}catch(e){}
   }
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return u;})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',bd:(S.board||[]).length?S.board:[{_:0}],ys:Object.keys(S.yearSnapshots||{}).length?S.yearSnapshots:{_:0},ay:S.activeYear||2026,ej:S.emailjs||{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?fbKeySafe(S.act):{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?fbKeySafe(SL):{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return fbKeySafe(u);})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',bd:(S.board||[]).length?S.board:[{_:0}],ys:Object.keys(S.yearSnapshots||{}).length?S.yearSnapshots:{_:0},ay:S.activeYear||2026,ej:S.emailjs||{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
