@@ -757,7 +757,10 @@ function saveSP(){if(!S.spTgt)return;const{g,u,si,ii}=S.spTgt,lk=LK(g,u,si,ii);S
 // ══════════════════════════════════════════════════════════════
 function renderDash(){const root=document.getElementById('dash-root');const has=Object.keys(S.kpi).length>0;const REMOVED_TYPES=['sec_compare','top_bottom','scale_status','lock_status'];const vis=S.widgets.filter(w=>w.visible&&!REMOVED_TYPES.includes(w.type));
   let yearBanner='';
-  if(isYearReadonly()){yearBanner=`<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><span style="font-size:16px">📅</span><div><span style="font-size:12px;font-weight:800;color:var(--amber)">${S.activeYear}년 데이터 조회 중</span><span style="font-size:10px;color:var(--t3);margin-left:8px">읽기 전용 — 수정하려면 ${CURRENT_YEAR}년으로 전환하세요</span></div></div>`;}
+  if(S.activeYear!==CURRENT_YEAR){
+    const ro=isYearReadonly();
+    yearBanner=`<div style="background:${ro?'rgba(251,191,36,.1)':'rgba(59,130,246,.1)'};border:1px solid ${ro?'rgba(251,191,36,.3)':'rgba(59,130,246,.3)'};border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><span style="font-size:16px">📅</span><div><span style="font-size:12px;font-weight:800;color:${ro?'var(--amber)':'var(--blue)'}">${S.activeYear}년 데이터 ${ro?'조회':'편집'} 중</span><span style="font-size:10px;color:var(--t3);margin-left:8px">${ro?'읽기 전용 — 수정하려면 관리자 권한 필요':'관리자 모드 — 데이터 편집 가능'}</span></div></div>`;
+  }
   if(!vis.length){root.innerHTML=yearBanner+'<div style="text-align:center;padding:40px;color:var(--t3)">표시할 위젯이 없습니다</div>';return;}
 // Ensure S.dbOrg is set before rendering any widget
 if(has){const gks=visibleOrgs().filter(g=>g!=='전사KPI');if(!S.dbOrg||!gks.includes(S.dbOrg))S.dbOrg=gks[0]||null;}
@@ -1398,123 +1401,125 @@ async function generatePPT(){
 function generatePPTInBrowser(sel,orgData){
   const gks=ordKeys();
   const date=new Date().toLocaleDateString('ko-KR');
-  const totalOrgs=gks.length;
+  const yr=S.activeYear||2026;
+  const totalOrgs=gks.filter(g=>g!==getCorpOrg()).length;
   const totalKPI=Object.values(S.kpi).reduce((a,g)=>a+Object.values(g.units).reduce((b,u)=>b+u.sections.reduce((c,s)=>c+s.items.length,0),0),0);
-  let pageNum=0;
-  function pgN(){return++pageNum;}
-
+  const corpG=getCorpOrg();const corpLabel=corpG?(S.kpi[corpG]?.label||corpG):'전사';
+  let pageNum=0;function pgN(){return++pageNum;}
+  const clrPct=p=>p>=90?'#10b981':p>=80?'#3b82f6':p>=60?'#f59e0b':'#ef4444';
   let html='';
 
-  // Cover
+  // COVER
   if(sel.includes('cover')){
-    html+=`<div class="rpt-slide rpt-cover">
-      <div class="rpt-logo">SK broadband</div>
-      <div class="rpt-cover-body">
-        <div style="font-size:32px;font-weight:900;color:#111;letter-spacing:-0.5px">'26년 단위조직 KPI 실적 현황</div>
-        <div style="width:200px;height:2px;background:#333;margin:20px auto"></div>
-        <div style="font-size:16px;color:#555;margin-top:12px">( 보고서 )</div>
-        <div style="margin-top:60px;font-size:13px;color:#888">${date} 기준</div>
+    const avgPct=orgData.filter(d=>d.pct!=null).length?Math.round(orgData.filter(d=>d.pct!=null).reduce((a,d)=>a+d.pct,0)/orgData.filter(d=>d.pct!=null).length):null;
+    html+=`<div class="rpt-slide rpt-cover"><div class="rpt-logo">SK broadband</div><div class="rpt-cover-body">
+      <div style="font-size:34px;font-weight:900;color:#111">'${String(yr).slice(2)}년 ${E(corpLabel)} KPI 실적 보고서</div>
+      <div style="width:240px;height:2px;background:#333;margin:24px auto"></div>
+      <div style="display:flex;justify-content:center;gap:40px;margin-top:40px">
+        <div><div style="font-size:42px;font-weight:900;color:#3b82f6">${totalOrgs}</div><div style="font-size:11px;color:#888;margin-top:4px">조직</div></div>
+        <div><div style="font-size:42px;font-weight:900;color:#10b981">${totalKPI}</div><div style="font-size:11px;color:#888;margin-top:4px">KPI 지표</div></div>
+        ${avgPct!=null?`<div><div style="font-size:42px;font-weight:900;color:${clrPct(avgPct)}">${avgPct}%</div><div style="font-size:11px;color:#888;margin-top:4px">평균 달성률</div></div>`:''}
       </div>
-    </div>`;
+      <div style="margin-top:50px;font-size:12px;color:#aaa">${date} 기준</div>
+    </div></div>`;
   }
 
-  // Summary
+  // SUMMARY
   if(sel.includes('summary')){
-    html+=`<div class="rpt-slide">
-      <div class="rpt-hdr"><div class="rpt-sec">Ⅰ. 전체 현황</div><div class="rpt-sub">1. 조직별 달성률 요약</div></div>
-      <table class="rpt-tbl"><thead><tr><th>조직</th><th style="width:80px">총 배점</th><th style="width:80px">총 점수</th><th style="width:80px">달성률</th><th style="width:80px">입력 현황</th></tr></thead><tbody>
-      ${orgData.map(d=>{const clr=d.pct!=null?(d.pct>=80?'#10b981':d.pct>=60?'#f59e0b':'#ef4444'):'#aaa';return`<tr><td style="font-weight:700">${E(d.label)}</td><td style="text-align:center">${d.totalPts}</td><td style="text-align:center;font-weight:700;color:${clr}">${d.totalScore!=null?d.totalScore:'—'}</td><td style="text-align:center"><span style="font-weight:800;color:${clr}">${d.pct!=null?d.pct+'%':'—'}</span></td><td style="text-align:center;color:#888">${d.filled}/${d.total}</td></tr>`;}).join('')}
-      </tbody></table>
-      <div class="rpt-pn">${pgN()}</div>
-    </div>`;
+    html+=`<div class="rpt-slide"><div class="rpt-hdr"><div class="rpt-sec">Ⅰ. 전체 현황</div><div class="rpt-sub">1. 조직별 달성률 요약</div></div>
+      <div style="padding:0 48px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px">
+      ${orgData.map(d=>{const pct=d.pct!=null?d.pct:0;const clr=d.pct!=null?clrPct(d.pct):'#ccc';return`<div style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:${clr}"></div>
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px;padding-left:8px">${E(d.label)}</div>
+        <div style="display:flex;align-items:baseline;gap:6px;padding-left:8px">
+          <span style="font-size:28px;font-weight:900;color:${clr}">${d.pct!=null?d.pct+'%':'—'}</span>
+          <span style="font-size:10px;color:#999">${d.totalScore!=null?d.totalScore+'/'+d.totalPts+'점':''}</span>
+        </div>
+        <div style="height:6px;background:#eee;border-radius:3px;margin:8px 8px 0;overflow:hidden"><div style="width:${Math.min(pct,100)}%;height:100%;background:${clr};border-radius:3px"></div></div>
+        <div style="font-size:9px;color:#aaa;margin-top:4px;padding-left:8px">입력 ${d.filled}/${d.total}</div>
+      </div>`;}).join('')}
+      </div></div><div class="rpt-pn">${pgN()}</div></div>`;
   }
 
-  // Per-org slides
+  // PER-ORG
   let orgIdx=0;
   gks.forEach(g=>{
     if(!sel.includes('org_'+g))return;
-    orgIdx++;
-    const gr=S.kpi[g];
-    html+=`<div class="rpt-slide">
-      <div class="rpt-hdr"><div class="rpt-sec">Ⅱ. 단위조직 KPI 상세</div><div class="rpt-sub">${orgIdx}. ${E(gr.label||g)}</div></div>`;
-    Object.entries(gr.units).forEach(([u,un])=>{
-      un.sections.forEach((sec,si)=>{
-        const secClr=sec.type==='financial'?'#3b82f6':sec.type==='common'?'#8b5cf6':'#10b981';
-        html+=`<div style="margin:12px 0 4px;display:flex;align-items:center;gap:6px"><div style="background:${secClr};color:#fff;padding:1px 10px;border-radius:3px;font-size:10px;font-weight:700">${E(sec.name)}</div></div>
-        <table class="rpt-tbl"><thead><tr><th style="text-align:left">지표명</th><th style="width:50px">배점</th><th>Target</th><th style="width:70px">실적</th><th style="width:60px">점수(100)</th><th style="width:65px">점수(배점)</th><th style="width:55px">달성률</th></tr></thead><tbody>`;
-        sec.items.forEach((it,ii)=>{
-          const k=AK(g,u,si,ii),ac=S.act[k]||'',lk=LK(g,u,si,ii);
-          const s100=ac?cS100(ac,SL[lk]):null;
-          const s2=ac?cFS(it.pts,ac,SL[lk],it.direction):null;
-          const p2=s2!=null?Math.round(s2/it.pts*100):null;
-          const tgt=it.targetValue!=null?(it.targetValue+(it.targetUnit?' '+it.targetUnit:'')):(it.target||'');
-          const clr=p2!=null?(p2>=80?'#10b981':p2>=60?'#f59e0b':'#ef4444'):'#aaa';
-          const tags=(it.evalType==='text'?'<span style="color:#8b5cf6;font-size:8px;margin-left:3px">[정성]</span>':'')+(it.direction==='desc'?'<span style="color:#f59e0b;font-size:8px;margin-left:3px">[↓]</span>':'');
-          html+=`<tr><td style="font-weight:600">${E(it.name)}${tags}</td><td style="text-align:center">${it.pts}</td><td style="font-size:10px;color:#555">${E(tgt)||'—'}</td><td style="text-align:center;font-weight:600">${E(ac)||'—'}</td><td style="text-align:center">${s100!=null?s100:'—'}</td><td style="text-align:center;font-weight:700;color:${clr}">${s2!=null?s2:'—'}</td><td style="text-align:center;font-weight:700;color:${clr}">${p2!=null?p2+'%':'—'}</td></tr>`;
-        });
-        html+=`</tbody></table>`;
-      });
-    });
-    html+=`<div class="rpt-pn">${pgN()}</div></div>`;
+    orgIdx++;const gr=S.kpi[g];
+    const od=orgData.find(d=>d.label===(gr.label||g));
+    const orgPct=od?.pct;const orgClr=orgPct!=null?clrPct(orgPct):'#999';
+    html+=`<div class="rpt-slide"><div class="rpt-hdr"><div class="rpt-sec">Ⅱ. 단위조직 KPI 상세</div><div class="rpt-sub">${orgIdx}. ${E(gr.label||g)}</div></div><div style="padding:0 48px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:12px 16px;background:#f8f9fb;border-radius:8px;border-left:4px solid ${orgClr}">
+        <div><div style="font-size:11px;color:#888">달성률</div><div style="font-size:32px;font-weight:900;color:${orgClr}">${orgPct!=null?orgPct+'%':'—'}</div></div>
+        <div style="flex:1"><div style="height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden"><div style="width:${Math.min(orgPct||0,100)}%;height:100%;background:${orgClr};border-radius:4px"></div></div></div>
+        <div style="text-align:right"><div style="font-size:10px;color:#888">${od?.totalScore!=null?od.totalScore+'/'+od.totalPts+'점':''}</div></div>
+      </div>`;
+    Object.entries(gr.units).forEach(([u,un])=>{un.sections.forEach((sec,si)=>{
+      const secClr=sec.type==='financial'?'#3b82f6':sec.type==='common'?'#8b5cf6':'#10b981';
+      const secPts=sec.items.reduce((a,it)=>a+it.pts,0);let secSc=0,secAny=false;
+      sec.items.forEach((it,ii)=>{const sc=isc(g,u,si,ii);if(sc!=null){secSc+=sc;secAny=true;}});
+      const secPct=secAny&&secPts?Math.round(secSc/secPts*100):null;
+      html+=`<div style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="background:${secClr};color:#fff;padding:2px 12px;border-radius:4px;font-size:10px;font-weight:700">${E(sec.name)}</div>
+        <span style="font-size:10px;color:#888">${secPts}점</span>
+        ${secPct!=null?`<span style="font-size:11px;font-weight:800;color:${clrPct(secPct)};margin-left:auto">${secPct}%</span>`:''}
+      </div><table class="rpt-tbl" style="width:100%;margin:0 0 4px"><thead><tr><th style="text-align:left;width:28%">지표명</th><th style="width:45px">배점</th><th style="width:18%">Target</th><th style="width:60px">실적</th><th style="width:55px">점수</th><th style="width:50px">달성률</th></tr></thead><tbody>`;
+      sec.items.forEach((it,ii)=>{
+        const k=AK(g,u,si,ii),ac=S.act[k]||'',lk=LK(g,u,si,ii);
+        const s2=ac?cFS(it.pts,ac,SL[lk],it.direction):null;const p2=s2!=null?Math.round(s2/it.pts*100):null;
+        const tgt=it.targetValue!=null?(it.targetValue+(it.targetUnit?' '+it.targetUnit:'')):(it.target||'');const clr2=p2!=null?clrPct(p2):'#aaa';
+        html+=`<tr><td style="font-weight:600">${E(it.name)}${it.evalType==='text'?' <span style="color:#8b5cf6;font-size:8px">[정성]</span>':''}</td><td style="text-align:center">${it.pts}</td><td style="font-size:10px;color:#555">${E(tgt)||'—'}</td><td style="text-align:center;font-weight:600">${E(ac)||'—'}</td><td style="text-align:center;font-weight:700;color:${clr2}">${s2!=null?s2:'—'}</td><td style="text-align:center"><span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;background:${p2!=null?clr2+'18':'#f5f5f5'};color:${clr2}">${p2!=null?p2+'%':'—'}</span></td></tr>`;
+      });html+=`</tbody></table></div>`;
+    });});
+    html+=`</div><div class="rpt-pn">${pgN()}</div></div>`;
   });
 
-  // Ranking
+  // RANKING
   if(sel.includes('ranking')){
     const ranked=[...orgData].filter(d=>d.pct!=null).sort((a,b)=>b.pct-a.pct);
     const medal=['🥇','🥈','🥉'];
-    html+=`<div class="rpt-slide">
-      <div class="rpt-hdr"><div class="rpt-sec">Ⅲ. 분석</div><div class="rpt-sub">1. 조직별 달성 순위</div></div>
-      <table class="rpt-tbl"><thead><tr><th style="width:50px">순위</th><th>조직</th><th style="width:90px">달성률</th><th style="width:80px">점수</th><th style="width:80px">배점</th></tr></thead><tbody>
-      ${ranked.map((d,i)=>`<tr><td style="text-align:center;font-weight:900;font-size:14px">${i<3?medal[i]:i+1}</td><td style="font-weight:700">${E(d.label)}</td><td style="text-align:center;font-weight:800;font-size:14px;color:${d.pct>=80?'#10b981':d.pct>=60?'#f59e0b':'#ef4444'}">${d.pct}%</td><td style="text-align:center">${d.totalScore}</td><td style="text-align:center;color:#888">${d.totalPts}</td></tr>`).join('')}
-      </tbody></table>
-      <div class="rpt-pn">${pgN()}</div>
-    </div>`;
+    html+=`<div class="rpt-slide"><div class="rpt-hdr"><div class="rpt-sec">Ⅲ. 분석</div><div class="rpt-sub">1. 조직별 달성 순위</div></div><div style="padding:0 48px">
+      ${ranked.length>=3?`<div style="display:flex;gap:16px;margin-bottom:20px;justify-content:center">${ranked.slice(0,3).map((d,i)=>{const clr=clrPct(d.pct);const fs=[48,36,30][i];return`<div style="flex:1;max-width:200px;text-align:center;padding:20px 12px;border-radius:10px;background:linear-gradient(135deg,${clr}08,${clr}15);border:1px solid ${clr}30">
+        <div style="font-size:28px">${medal[i]}</div><div style="font-size:14px;font-weight:800;margin:6px 0">${E(d.label)}</div>
+        <div style="font-size:${fs}px;font-weight:900;color:${clr}">${d.pct}%</div>
+        <div style="font-size:9px;color:#888;margin-top:4px">${d.totalScore}/${d.totalPts}점</div></div>`;}).join('')}</div>`:''}
+      ${ranked.length>3?`<table class="rpt-tbl" style="width:100%;margin:0"><thead><tr><th style="width:40px">#</th><th>조직</th><th style="width:100px">달성률</th><th style="width:80px">점수</th></tr></thead><tbody>${ranked.slice(3).map((d,i)=>`<tr><td style="text-align:center;font-weight:700;color:#888">${i+4}</td><td style="font-weight:600">${E(d.label)}</td><td style="text-align:center"><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden"><div style="width:${Math.min(d.pct,100)}%;height:100%;background:${clrPct(d.pct)};border-radius:3px"></div></div><span style="font-weight:800;color:${clrPct(d.pct)};min-width:36px;text-align:right">${d.pct}%</span></div></td><td style="text-align:center;font-size:10px;color:#888">${d.totalScore}/${d.totalPts}</td></tr>`).join('')}</tbody></table>`:''}
+    </div><div class="rpt-pn">${pgN()}</div></div>`;
   }
 
-  // No-input
+  // NO-INPUT
   if(sel.includes('noinput')){
-    const miss=[];
-    gks.forEach(g=>Object.entries(S.kpi[g].units).forEach(([u,un])=>un.sections.forEach((s,si)=>s.items.forEach((it,ii)=>{
-      const ac=S.act[AK(g,u,si,ii)]||'';
-      if(!ac.trim())miss.push({org:S.kpi[g]?.label||g,unit:u,sec:s.name,name:it.name,pts:it.pts});
-    }))));
-    html+=`<div class="rpt-slide">
-      <div class="rpt-hdr"><div class="rpt-sec">Ⅲ. 분석</div><div class="rpt-sub">2. 미입력 현황 <span style="color:#ef4444">(${miss.length}건)</span></div></div>
-      <table class="rpt-tbl"><thead><tr><th>조직</th><th>하위조직</th><th>섹션</th><th>지표명</th><th style="width:50px">배점</th></tr></thead><tbody>
-      ${miss.slice(0,30).map(m=>`<tr><td>${E(m.org)}</td><td>${E(m.unit)}</td><td>${E(m.sec)}</td><td style="font-weight:600">${E(m.name)}</td><td style="text-align:center">${m.pts}</td></tr>`).join('')}
-      ${miss.length>30?`<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic">외 ${miss.length-30}건</td></tr>`:''}
-      </tbody></table>
-      <div class="rpt-pn">${pgN()}</div>
-    </div>`;
+    const miss=[];gks.forEach(g=>Object.entries(S.kpi[g].units).forEach(([u,un])=>un.sections.forEach((s,si)=>s.items.forEach((it,ii)=>{const ac=S.act[AK(g,u,si,ii)]||'';if(!ac.trim())miss.push({org:S.kpi[g]?.label||g,name:it.name,pts:it.pts});}))));
+    const byOrg={};miss.forEach(m=>{if(!byOrg[m.org])byOrg[m.org]=[];byOrg[m.org].push(m);});
+    html+=`<div class="rpt-slide"><div class="rpt-hdr"><div class="rpt-sec">Ⅲ. 분석</div><div class="rpt-sub">2. 미입력 현황 — <span style="color:#ef4444">${miss.length}건</span></div></div><div style="padding:0 48px">
+      ${Object.entries(byOrg).map(([org,items])=>`<div style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><div style="background:#ef4444;color:#fff;padding:1px 10px;border-radius:4px;font-size:10px;font-weight:700">${E(org)}</div><span style="font-size:10px;color:#888">${items.length}건</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${items.slice(0,12).map(m=>`<span style="font-size:9px;padding:3px 8px;border-radius:4px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-weight:600">${E(m.name)} (${m.pts}점)</span>`).join('')}${items.length>12?`<span style="font-size:9px;padding:3px 8px;color:#999">외 ${items.length-12}건</span>`:''}</div></div>`).join('')}
+    </div><div class="rpt-pn">${pgN()}</div></div>`;
   }
 
-  // Open in new window
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>KPI 보고서</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
   <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Noto Sans KR',sans-serif;background:#e8e8e8;color:#222}
+  *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Noto Sans KR',sans-serif;background:#e8e8e8;color:#222}
   .rpt-slide{width:960px;min-height:680px;margin:24px auto;padding:0;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.12);page-break-after:always;position:relative;overflow:hidden}
   .rpt-cover{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:680px}
-  .rpt-logo{position:absolute;top:28px;left:36px;font-size:14px;font-weight:700;color:#e8520e;letter-spacing:0.5px}
+  .rpt-logo{position:absolute;top:28px;left:36px;font-size:14px;font-weight:700;color:#e8520e}
   .rpt-cover-body{margin-top:-20px}
   .rpt-hdr{padding:32px 48px 0;margin-bottom:20px}
   .rpt-sec{font-size:18px;font-weight:900;color:#111;padding-bottom:8px;border-bottom:2px solid #222}
   .rpt-sub{font-size:14px;font-weight:700;color:#333;margin-top:6px;text-align:right;border-bottom:1px solid #ccc;padding-bottom:4px}
-  .rpt-tbl{width:calc(100% - 96px);margin:0 48px 14px;border-collapse:collapse;font-size:11px}
-  .rpt-tbl th{padding:7px 10px;background:#d9d9d9;border:1px solid #bbb;font-weight:700;color:#333;text-align:left;font-size:10px}
-  .rpt-tbl td{padding:5px 10px;border:1px solid #ccc;color:#333}
+  .rpt-tbl{border-collapse:collapse;font-size:11px}
+  .rpt-tbl th{padding:6px 10px;background:#d9d9d9;border:1px solid #bbb;font-weight:700;color:#333;text-align:left;font-size:10px}
+  .rpt-tbl td{padding:5px 10px;border:1px solid #ddd;color:#333}
   .rpt-tbl tr:nth-child(even){background:#fafafa}
   .rpt-pn{position:absolute;bottom:20px;right:48px;font-size:11px;color:#999}
   @media print{body{background:#fff}.rpt-slide{box-shadow:none;margin:0;width:100%;min-height:auto}}
-  .no-print{text-align:center;padding:16px}
   </style></head><body>
   <div class="no-print" style="background:#333;color:#fff;padding:12px 24px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center">
-    <span style="font-weight:700">📑 KPI 보고서 미리보기 — ${sel.length}개 장표</span>
-    <div><button onclick="document.querySelectorAll('.no-print').forEach(e=>e.style.display='none');window.print();document.querySelectorAll('.no-print').forEach(e=>e.style.display='')" style="padding:8px 20px;background:#e8520e;color:#fff;border:none;border-radius:4px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">🖨️ 인쇄 / PDF 저장</button></div>
-  </div>
-  ${html}</body></html>`);
+    <span style="font-weight:700">📑 KPI 보고서 — ${sel.length}개 장표</span>
+    <button onclick="document.querySelectorAll('.no-print').forEach(e=>e.style.display='none');window.print();document.querySelectorAll('.no-print').forEach(e=>e.style.display='')" style="padding:8px 20px;background:#e8520e;color:#fff;border:none;border-radius:4px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">🖨️ 인쇄 / PDF 저장</button>
+  </div>${html}</body></html>`);
   w.document.close();
   document.getElementById('rpt-status').textContent='보고서가 새 창에서 열렸습니다.';
   toast('보고서 생성 완료','s');
@@ -2897,7 +2902,12 @@ function saveCurrentYearSnapshot(year){
 }
 
 function isCurrentYear(){return S.activeYear===CURRENT_YEAR;}
-function isYearReadonly(){return S.activeYear!==CURRENT_YEAR;}
+function isYearReadonly(){
+  if(S.activeYear===CURRENT_YEAR)return false;
+  // Admin can edit past years for data entry
+  if(S.curAccount?.role==='admin')return false;
+  return true;
+}
 
 function updateYearBadge(){
   const sel=document.getElementById('year-sel');
