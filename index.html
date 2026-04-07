@@ -3181,20 +3181,14 @@ function fbKeyRestore(obj){
 
 async function saveToFirebase(){
   if(!_fbReady||!_fbRef)return;
+  if(_fbSyncing)return; // prevent concurrent writes
   _fbSyncing=true;
-  // Safety: don't overwrite Firebase if users data seems incomplete
-  const _uCount=Object.keys(S.users||{}).length;
-  if(_uCount<=1&&_fbRef){
-    // Check if Firebase already has more users
-    try{const snap=await _fbRef.child('users').once('value');const fbUsers=snap.val();if(fbUsers){const fbCount=Object.keys(fbUsers).filter(k=>k!=='_').length;if(fbCount>_uCount){console.warn('saveToFirebase blocked: local users('+_uCount+') < Firebase('+fbCount+')');_fbSyncing=false;return;}}}catch(e){}
-  }
   try{
     const raw={act:Object.keys(S.act||{}).length?fbKeySafe(S.act):{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?fbKeySafe(SL):{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return fbKeySafe(u);})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',bd:(S.board||[]).length?S.board:[{_:0}],ys:Object.keys(S.yearSnapshots||{}).length?S.yearSnapshots:{_:0},ay:S.activeYear||2026,ej:S.emailjs||{_:0},t:Date.now()};
-    // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
     _fbRef.set(d).then(()=>{
-      setTimeout(()=>{_fbSyncing=false;},500);
+      setTimeout(()=>{_fbSyncing=false;},300);
       updateFBStatus('synced');
     }).catch(e=>{
       _fbSyncing=false;
