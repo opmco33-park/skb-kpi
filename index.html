@@ -218,6 +218,7 @@ body.light .piw-slider::-moz-range-track{background:#cbd5e1}
     <button class="tab" onclick="go('admin')" id="t-admin" style="display:none">🛡️ 관리자</button>
   </div>
   <div class="hdr-r">
+    <select id="year-sel" onchange="switchYear(Number(this.value))" style="font-size:10px;font-weight:800;padding:3px 6px;border-radius:5px;border:1px solid var(--bd);background:var(--sec);color:var(--t1);cursor:pointer;font-family:inherit"></select>
     <span id="fb-status" style="font-size:9px;padding:2px 6px;border-radius:3px;display:none"></span>
     <div id="online-users" style="display:flex;align-items:center;gap:2px;margin-right:4px"></div>
     <button class="btn" onclick="toggleTheme()" id="thBtn" style="font-size:10px;padding:3px 6px">☀️</button>
@@ -461,6 +462,8 @@ const S={
   piIndexLabels:null, // custom labels for scoring indices
   corpOrg:null, // which org key is the 전사 org (default: auto-detect)
   board:[], // public board posts
+  yearSnapshots:{}, // {2024:{kpi,act,SL,pi,cm,tg}, 2025:{...}}
+  activeYear:2026, // currently viewing year
   // EmailJS config {serviceId, templateId, publicKey}
   emailjs:null,
 };
@@ -525,7 +528,7 @@ async function ensureAdminPwH(){
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
   if(changed){
     // Save to localStorage only (not Firebase) during init
-    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   }
 }
 
@@ -543,9 +546,10 @@ async function doLogin(){
   document.getElementById('login-gate').style.display='none';
   document.getElementById('lg-id').value='';document.getElementById('lg-pw').value='';errEl.textContent='';
   updateAuthUI();
-  addL('로그인',acc.name+' ('+acc.role+')');try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ej:S.emailjs,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+  addL('로그인',acc.name+' ('+acc.role+')');try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ys:S.yearSnapshots,ay:S.activeYear,ej:S.emailjs,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   startFBListener();
   startPresence();
+  initYearSelector();updateYearBadge();
   go('dash');renderAnn();toast(acc.name+'님 로그인','s');setTimeout(checkAlerts,300);
 }
 
@@ -584,15 +588,15 @@ function updateAuthUI(){
 
 function isLoggedIn(){return!!S.curAccount;}
 function curUsr(){return S.curAccount?S.curAccount.name:'익명';}
-function canEdit(g){if(!S.curAccount)return false;if(S.curAccount.role==='admin')return true;if(S.curAccount.role==='viewer')return false;if(S.curAccount.role==='manager'){if(!S.curAccount.orgs?.length)return true;return S.curAccount.orgs.includes(g);}return false;}
+function canEdit(g){if(isYearReadonly())return false;if(!S.curAccount)return false;if(S.curAccount.role==='admin')return true;if(S.curAccount.role==='viewer')return false;if(S.curAccount.role==='manager'){if(!S.curAccount.orgs?.length)return true;return S.curAccount.orgs.includes(g);}return false;}
 function hasPerm(p){if(!S.curAccount)return false;if(S.curAccount.role==='admin')return true;return!!S.curAccount.perms?.[p];}
 function updBar(){}
 
 // ══════════════════════════════════════════════════════════════
 // STORAGE
 // ══════════════════════════════════════════════════════════════
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ys)S.yearSnapshots=d.ys;if(d.ay)S.activeYear=d.ay;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
     // Fix Firebase array-to-object conversion in nested structures
     Object.values(d.kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;if(un.sections&&!Array.isArray(un.sections)){const ks=Object.keys(un.sections);if(ks.every(k=>/^\d+$/.test(k)))un.sections=ks.sort((a,b)=>+a-+b).map(k=>un.sections[k]);else un.sections=[];}if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{if(sec.items&&!Array.isArray(sec.items)){const ks=Object.keys(sec.items);if(ks.every(k=>/^\d+$/.test(k)))sec.items=ks.sort((a,b)=>+a-+b).map(k=>sec.items[k]);else sec.items=[];}if(!Array.isArray(sec.items))sec.items=[];});});});
     Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
@@ -600,8 +604,8 @@ function showSettings(){toast('설정은 관리자 콘솔에서 관리합니다'
 function closeSet(){}
 function chgPw(){}
 function clearAll(){if(!confirm('⚠️ 전체 초기화\n\n모든 KPI 지표, 실적, 사용자 계정, 코멘트, 태그, 이력이 삭제됩니다.\nFirebase 데이터도 함께 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?'))return;if(!confirm('정말로 전체 초기화를 진행하시겠습니까?'))return;try{if(_fbRef){_fbRef.off();}localStorage.removeItem(LS);if(_fbReady&&_fbRef){_fbRef.remove().then(()=>{location.reload();}).catch(()=>{location.reload();});}else{location.reload();}}catch(e){console.error('clearAll error:',e);localStorage.removeItem(LS);location.reload();}}
-function exportAll(){const d={act:S.act,ascr:S.ascr,SL,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ej:S.emailjs||null,v:'v4'};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='KPI_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('백업 완료','s');}
-function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.kpi)Object.assign(S.kpi,d.kpi);if(d.users)Object.assign(S.users,d.users);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.ej)S.emailjs=d.ej;save();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
+function exportAll(){const d={act:S.act,ascr:S.ascr,SL,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,v:'v4'};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='KPI_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('백업 완료','s');}
+function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.kpi)Object.assign(S.kpi,d.kpi);if(d.users)Object.assign(S.users,d.users);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ys)S.yearSnapshots=d.ys;if(d.ay)S.activeYear=d.ay;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.ej)S.emailjs=d.ej;save();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
 function renderAll(){renderNav();renderKPI();renderDash();renderAnn();}
 
 // ══════════════════════════════════════════════════════════════
@@ -751,10 +755,13 @@ function saveSP(){if(!S.spTgt)return;const{g,u,si,ii}=S.spTgt,lk=LK(g,u,si,ii);S
 // ══════════════════════════════════════════════════════════════
 // DASHBOARD — WIDGET BASED
 // ══════════════════════════════════════════════════════════════
-function renderDash(){const root=document.getElementById('dash-root');const has=Object.keys(S.kpi).length>0;const REMOVED_TYPES=['sec_compare','top_bottom','scale_status','lock_status'];const vis=S.widgets.filter(w=>w.visible&&!REMOVED_TYPES.includes(w.type));if(!vis.length){root.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3)">표시할 위젯이 없습니다</div>';return;}
+function renderDash(){const root=document.getElementById('dash-root');const has=Object.keys(S.kpi).length>0;const REMOVED_TYPES=['sec_compare','top_bottom','scale_status','lock_status'];const vis=S.widgets.filter(w=>w.visible&&!REMOVED_TYPES.includes(w.type));
+  let yearBanner='';
+  if(isYearReadonly()){yearBanner=`<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><span style="font-size:16px">📅</span><div><span style="font-size:12px;font-weight:800;color:var(--amber)">${S.activeYear}년 데이터 조회 중</span><span style="font-size:10px;color:var(--t3);margin-left:8px">읽기 전용 — 수정하려면 ${CURRENT_YEAR}년으로 전환하세요</span></div></div>`;}
+  if(!vis.length){root.innerHTML=yearBanner+'<div style="text-align:center;padding:40px;color:var(--t3)">표시할 위젯이 없습니다</div>';return;}
 // Ensure S.dbOrg is set before rendering any widget
 if(has){const gks=visibleOrgs().filter(g=>g!=='전사KPI');if(!S.dbOrg||!gks.includes(S.dbOrg))S.dbOrg=gks[0]||null;}
-const rows={};vis.forEach(w=>{const r=w.row!=null?w.row:999;if(!rows[r])rows[r]=[];rows[r].push(w);});const sortedRows=Object.keys(rows).map(Number).sort((a,b)=>a-b);let html='';sortedRows.forEach(r=>{const wgs=rows[r];let rowHtml='';wgs.forEach(w=>{const inner=renderWidget(w,has);const sz=w.size||'100';if(inner!==null&&inner!==undefined){rowHtml+=`<div class="wg wg-${sz}">${inner}</div>`;}});if(rowHtml)html+=`<div class="db-row">${rowHtml}</div>`;});root.innerHTML=html||'<div style="text-align:center;padding:40px;color:var(--t3)">표시할 데이터가 없습니다</div>';}
+const rows={};vis.forEach(w=>{const r=w.row!=null?w.row:999;if(!rows[r])rows[r]=[];rows[r].push(w);});const sortedRows=Object.keys(rows).map(Number).sort((a,b)=>a-b);let html='';sortedRows.forEach(r=>{const wgs=rows[r];let rowHtml='';wgs.forEach(w=>{const inner=renderWidget(w,has);const sz=w.size||'100';if(inner!==null&&inner!==undefined){rowHtml+=`<div class="wg wg-${sz}">${inner}</div>`;}});if(rowHtml)html+=`<div class="db-row">${rowHtml}</div>`;});root.innerHTML=yearBanner+(html||'<div style="text-align:center;padding:40px;color:var(--t3)">표시할 데이터가 없습니다</div>');}
 
 function renderWidget(w,has){
   if(w.type==='total') return wTotal(has);
@@ -831,7 +838,7 @@ function wLockStatus(){return"";}
 
 function togDB(id){const b=document.getElementById('dbb-'+id);const i=document.getElementById('dbi-'+id);if(b)b.classList.toggle('hide');if(i)i.classList.toggle('up');}
 
-function buildChart(items){if(!items.length)return'<div style="padding:16px;color:var(--t3);font-size:11px">데이터 없음</div>';const cH=140,bW=20,gap=18,pL=30,pT=24,pB=48,gG=6;const sM={'재무성과':'rgba(96,165,250','전략과제':'rgba(52,211,153','공통과제':'rgba(167,139,250','그룹 공통과제':'rgba(167,139,250'};const tW=pL+items.length*(bW*2+gG)+gap*(items.length-1)+16;let bars='',lbs='',yG='',flt='';[0,60,80,90,100].forEach(v=>{const y=pT+cH-Math.round(v/100*cH);yG+=`<line x1="${pL-3}" y1="${y}" x2="${tW-8}" y2="${y}" stroke="rgba(100,120,180,.12)" stroke-width="1" stroke-dasharray="${v%20===0?'3,2':'2,2'}"/><text x="${pL-6}" y="${y+3}" font-size="8" fill="rgba(148,163,184,.6)" text-anchor="end">${v}</text>`;});items.forEach((it,i)=>{const x=pL+i*(bW*2+gG+gap),sr=sM[it.sec]||'rgba(96,165,250',tH=cH,sH=it.pct!=null?Math.round(Math.min(it.pct,120)/100*cH):0,col=it.pct!=null?SC(it.pct):'rgba(148,163,184,.3)',xL=x,xR=x+bW+gG;flt+=`<filter id="g${i}"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;bars+=`<rect x="${xL}" y="${pT+cH-tH}" width="${bW}" height="${tH}" rx="2" fill="${sr},.08)" stroke="${sr},.3)" stroke-width="1" stroke-dasharray="3,2"/>`;if(it.pct!=null){bars+=`<rect x="${xR}" y="${pT+cH-sH}" width="${bW}" height="${sH}" rx="2" fill="${col}" opacity=".85" filter="url(#g${i})"/>`;bars+=`<text x="${xR+bW/2}" y="${pT+cH-sH-3}" font-size="7" fill="${col}" text-anchor="middle" font-weight="700">${it.pct}%</text>`;}const nm=it.name,L1=nm.slice(0,7),L2=nm.length>7?nm.slice(7,14)+(nm.length>14?'…':''):'',cx=x+bW+gG/2;lbs+=`<g><title>${E(nm)}</title><text x="${cx}" y="${pT+cH+12}" font-size="8" fill="rgba(148,163,184,.85)" text-anchor="middle" font-weight="600">${L1}</text>${L2?`<text x="${cx}" y="${pT+cH+22}" font-size="8" fill="rgba(148,163,184,.85)" text-anchor="middle" font-weight="600">${L2}</text>`:''}</g>`;});return`<svg viewBox="0 0 ${tW} ${cH+pT+pB}" width="${tW}" style="overflow:visible;display:block;flex-shrink:0"><defs>${flt}</defs>${yG}${bars}${lbs}</svg>`;}
+function buildChart(items){if(!items.length)return'<div style="padding:16px;color:var(--t3);font-size:11px">데이터 없음</div>';const maxPct=Math.max(100,...items.filter(it=>it.pct!=null).map(it=>it.pct));const yMax=Math.ceil(maxPct/20)*20;const cH=140,bW=20,gap=18,pL=30,pT=24,pB=48,gG=6;const sM={'재무성과':'rgba(96,165,250','전략과제':'rgba(52,211,153','공통과제':'rgba(167,139,250','그룹 공통과제':'rgba(167,139,250'};const tW=pL+items.length*(bW*2+gG)+gap*(items.length-1)+16;let bars='',lbs='',yG='',flt='';const ySteps=[];for(let v=0;v<=yMax;v+=20)ySteps.push(v);ySteps.forEach(v=>{const y=pT+cH-Math.round(v/yMax*cH);yG+=`<line x1="${pL-3}" y1="${y}" x2="${tW-8}" y2="${y}" stroke="rgba(100,120,180,.12)" stroke-width="1" stroke-dasharray="${v%40===0?'3,2':'2,2'}"/><text x="${pL-6}" y="${y+3}" font-size="8" fill="rgba(148,163,184,.6)" text-anchor="end">${v}</text>`;});if(yMax>100){const y100=pT+cH-Math.round(100/yMax*cH);yG+=`<line x1="${pL-3}" y1="${y100}" x2="${tW-8}" y2="${y100}" stroke="rgba(239,68,68,.25)" stroke-width="1" stroke-dasharray="4,2"/>`;}items.forEach((it,i)=>{const x=pL+i*(bW*2+gG+gap),sr=sM[it.sec]||'rgba(96,165,250',tH=Math.round(100/yMax*cH),sH=it.pct!=null?Math.round(it.pct/yMax*cH):0,col=it.pct!=null?SC(it.pct):'rgba(148,163,184,.3)',xL=x,xR=x+bW+gG;flt+=`<filter id="g${i}"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;bars+=`<rect x="${xL}" y="${pT+cH-tH}" width="${bW}" height="${tH}" rx="2" fill="${sr},.08)" stroke="${sr},.3)" stroke-width="1" stroke-dasharray="3,2"/>`;if(it.pct!=null){bars+=`<rect x="${xR}" y="${pT+cH-sH}" width="${bW}" height="${Math.max(sH,1)}" rx="2" fill="${col}" opacity=".85" filter="url(#g${i})"/>`;bars+=`<text x="${xR+bW/2}" y="${pT+cH-sH-3}" font-size="7" fill="${col}" text-anchor="middle" font-weight="700">${it.pct}%</text>`;}const nm=it.name,L1=nm.slice(0,7),L2=nm.length>7?nm.slice(7,14)+(nm.length>14?'…':''):'',cx=x+bW+gG/2;lbs+=`<g><title>${E(nm)}</title><text x="${cx}" y="${pT+cH+12}" font-size="8" fill="rgba(148,163,184,.85)" text-anchor="middle" font-weight="600">${L1}</text>${L2?`<text x="${cx}" y="${pT+cH+22}" font-size="8" fill="rgba(148,163,184,.85)" text-anchor="middle" font-weight="600">${L2}</text>`:''}</g>`;});return`<svg viewBox="0 0 ${tW} ${cH+pT+pB}" width="${tW}" style="overflow:visible;display:block;flex-shrink:0"><defs>${flt}</defs>${yG}${bars}${lbs}</svg>`;}
 
 // ══════════════════════════════════════════════════════════════
 // ★ ADMIN CONSOLE ★
@@ -2664,29 +2671,97 @@ function renderBoard(){
   const el=document.getElementById('board-list');if(!el)return;
   const posts=(S.board||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
   if(!posts.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px">💬</div><div style="font-size:13px">등록된 게시글이 없습니다</div><div style="font-size:11px;margin-top:4px">✏️ 글쓰기 버튼으로 첫 게시글을 작성하세요</div></div>';return;}
+  const myName=S.curAccount?.name||'';
   let h='';
   posts.forEach(p=>{
     const date=p.ts?new Date(p.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
     const tagClr={기능개선:'var(--blue)',버그신고:'var(--red)',의견:'var(--green)',질문:'var(--amber)',기타:'var(--t3)'}[p.tag]||'var(--t3)';
-    const isMine=S.curAccount&&p.author===S.curAccount.name;
+    const isMine=myName&&p.author===myName;
     const replies=(p.replies||[]);
+    const rcnt=replies.reduce((a,r)=>a+1+(r.children?r.children.length:0),0);
     h+=`<div style="background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:14px 16px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
         <span style="font-size:14px">${E(p.avatar||'👤')}</span>
         <span style="font-size:11px;font-weight:700">${E(p.author||'익명')}</span>
         <span style="font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(100,120,200,.1);color:${tagClr};font-weight:700;border:1px solid ${tagClr}">${E(p.tag||'기타')}</span>
+        ${rcnt?'<span style="font-size:8px;color:var(--t3)">💬 '+rcnt+'</span>':''}
         <span style="font-size:9px;color:var(--t3);margin-left:auto">${date}</span>
         ${isMine||S.isAdmin?'<button style="border:none;background:0;color:var(--red);font-size:9px;cursor:pointer" onclick="delBoardPost(\''+p.id+'\')">삭제</button>':''}
       </div>
       <div style="font-size:14px;font-weight:800;margin-bottom:4px">${E(p.title||'')}</div>
       <div style="font-size:11px;color:var(--t2);line-height:1.6;white-space:pre-line;margin-bottom:8px">${E(p.body||'')}</div>
       <div style="border-top:1px solid var(--bd);padding-top:8px">
-        ${replies.map(r=>`<div style="display:flex;gap:6px;padding:4px 0;border-bottom:1px solid rgba(100,120,180,.06)"><span style="font-size:12px">${E(r.avatar||'👤')}</span><div style="flex:1"><span style="font-size:10px;font-weight:700">${E(r.author)}</span><span style="font-size:8px;color:var(--t3);margin-left:4px">${r.ts?new Date(r.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''}</span><div style="font-size:10px;color:var(--t2);margin-top:2px">${E(r.text)}</div></div></div>`).join('')}
+        ${renderReplies(p.id,replies,myName,0)}
         <div style="display:flex;gap:4px;margin-top:6px"><input class="sinp" id="reply-${p.id}" placeholder="댓글 입력..." style="flex:1;font-size:10px;padding:4px 8px" onkeydown="if(event.key==='Enter')addBoardReply('${p.id}')"/><button class="btn" style="font-size:9px;padding:3px 8px" onclick="addBoardReply('${p.id}')">등록</button></div>
       </div>
     </div>`;
   });
   el.innerHTML=h;
+}
+
+function renderReplies(postId,replies,myName,depth){
+  return replies.map((r,ri)=>{
+    const isMine=myName&&r.author===myName;
+    const date=r.ts?new Date(r.ts).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    const indent=depth*20;
+    const editId='redit-'+postId+'-'+depth+'-'+ri;
+    let h=`<div style="display:flex;gap:6px;padding:4px 0 4px ${indent}px;border-bottom:1px solid rgba(100,120,180,.06)">
+      <span style="font-size:12px;flex-shrink:0">${E(r.avatar||'👤')}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700">${E(r.author)}</span>
+          <span style="font-size:8px;color:var(--t3)">${date}</span>
+          <span style="margin-left:auto;display:flex;gap:2px">
+            <button style="border:none;background:0;color:var(--cyan);font-size:8px;cursor:pointer" onclick="showReplyInput('${postId}',${depth},${ri})">답글</button>
+            ${isMine||S.isAdmin?'<button style="border:none;background:0;color:var(--t3);font-size:8px;cursor:pointer" onclick="editReply(\''+postId+'\','+depth+','+ri+')">수정</button><button style="border:none;background:0;color:var(--red);font-size:8px;cursor:pointer" onclick="delReply(\''+postId+'\','+depth+','+ri+')">삭제</button>':''}
+          </span>
+        </div>
+        <div style="font-size:10px;color:var(--t2);margin-top:2px" id="${editId}">${E(r.text)}</div>
+      </div>
+    </div>`;
+    if(r.children&&r.children.length)h+=renderReplies(postId,r.children,myName,depth+1);
+    h+=`<div id="subreply-${postId}-${depth}-${ri}" style="display:none;padding-left:${indent+20}px;margin:4px 0"><div style="display:flex;gap:4px"><input class="sinp" id="subreply-inp-${postId}-${depth}-${ri}" placeholder="답글 입력..." style="flex:1;font-size:10px;padding:3px 6px" onkeydown="if(event.key==='Enter')submitSubReply('${postId}',${depth},${ri})"/><button class="btn" style="font-size:8px;padding:2px 6px" onclick="submitSubReply('${postId}',${depth},${ri})">등록</button></div></div>`;
+    return h;
+  }).join('');
+}
+
+function showReplyInput(postId,depth,ri){
+  const el=document.getElementById('subreply-'+postId+'-'+depth+'-'+ri);
+  if(el){el.style.display=el.style.display==='none'?'block':'none';const inp=document.getElementById('subreply-inp-'+postId+'-'+depth+'-'+ri);if(inp)inp.focus();}
+}
+
+function getReplyByPath(replies,depth,ri){
+  if(depth===0)return replies[ri];
+  // For nested: traverse children
+  return replies[ri];
+}
+
+function submitSubReply(postId,depth,ri){
+  const inp=document.getElementById('subreply-inp-'+postId+'-'+depth+'-'+ri);
+  if(!inp)return;const text=inp.value.trim();if(!text){toast('답글을 입력하세요','e');return;}
+  const post=(S.board||[]).find(p=>p.id===postId);if(!post)return;
+  const parent=post.replies[ri];if(!parent)return;
+  if(!parent.children)parent.children=[];
+  parent.children.push({author:S.curAccount?.name||'익명',avatar:S.curAccount?.avatar||'👤',text,ts:Date.now()});
+  save();renderBoard();
+}
+
+function editReply(postId,depth,ri){
+  const post=(S.board||[]).find(p=>p.id===postId);if(!post)return;
+  const reply=depth===0?post.replies[ri]:null;if(!reply)return;
+  const newText=prompt('댓글 수정',reply.text);
+  if(newText===null)return;
+  if(!newText.trim()){toast('내용을 입력하세요','e');return;}
+  reply.text=newText.trim();
+  reply.editedAt=Date.now();
+  save();renderBoard();
+}
+
+function delReply(postId,depth,ri){
+  if(!confirm('댓글을 삭제하시겠습니까?'))return;
+  const post=(S.board||[]).find(p=>p.id===postId);if(!post)return;
+  if(depth===0){post.replies.splice(ri,1);}
+  save();renderBoard();toast('댓글 삭제','i');
 }
 
 function openBoardWrite(){
@@ -2746,6 +2821,92 @@ function delBoardPost(postId){
   if(!confirm('이 게시글을 삭제하시겠습니까?'))return;
   S.board=(S.board||[]).filter(p=>p.id!==postId);
   save();renderBoard();toast('삭제되었습니다','i');
+}
+
+// ── YEAR MANAGEMENT ──
+const CURRENT_YEAR=2026;
+const YEAR_RANGE=[2024,2025,2026];
+
+function initYearSelector(){
+  const sel=document.getElementById('year-sel');if(!sel)return;
+  const years=[...YEAR_RANGE];
+  // Add any snapshot years not in range
+  Object.keys(S.yearSnapshots||{}).forEach(y=>{const n=parseInt(y);if(!isNaN(n)&&!years.includes(n))years.push(n);});
+  years.sort((a,b)=>b-a);
+  sel.innerHTML=years.map(y=>`<option value="${y}"${y===S.activeYear?' selected':''}>${y}년${y===CURRENT_YEAR?' (현재)':''}</option>`).join('');
+}
+
+function switchYear(targetYear){
+  if(targetYear===S.activeYear)return;
+  const prevYear=S.activeYear;
+
+  // 1. Save current year data as snapshot (always, to preserve latest state)
+  saveCurrentYearSnapshot(prevYear);
+
+  // 2. Load target year
+  if(targetYear===CURRENT_YEAR){
+    // Load from main data (current year = live data)
+    const snap=S.yearSnapshots[CURRENT_YEAR];
+    if(snap){
+      if(snap.kpi)S.kpi=JSON.parse(JSON.stringify(snap.kpi));
+      if(snap.act)S.act=JSON.parse(JSON.stringify(snap.act));
+      if(snap.SL){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));}
+      if(snap.pi)S.piPool=JSON.parse(JSON.stringify(snap.pi));
+      if(snap.cm)S.comments=JSON.parse(JSON.stringify(snap.cm));
+      if(snap.tg)S.tags=JSON.parse(JSON.stringify(snap.tg));
+    }
+  }else{
+    // Load from snapshot
+    const snap=S.yearSnapshots[targetYear];
+    if(snap){
+      if(snap.kpi)S.kpi=JSON.parse(JSON.stringify(snap.kpi));
+      if(snap.act)S.act=JSON.parse(JSON.stringify(snap.act));
+      if(snap.SL){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));}
+      if(snap.pi)S.piPool=JSON.parse(JSON.stringify(snap.pi));
+      if(snap.cm)S.comments=JSON.parse(JSON.stringify(snap.cm));
+      if(snap.tg)S.tags=JSON.parse(JSON.stringify(snap.tg));
+    }else{
+      // No snapshot for this year: start empty
+      S.kpi={};S.act={};Object.keys(SL).forEach(k=>delete SL[k]);S.piPool={};S.comments={};S.tags={};
+      toast(targetYear+'년 데이터가 없습니다. 관리자가 데이터를 등록하거나 CSV를 업로드하세요.','i');
+    }
+  }
+
+  S.activeYear=targetYear;
+  save();
+
+  // Update UI
+  initYearSelector();
+  updateYearBadge();
+  renderAll();
+  go(S.page||'dash');
+  toast(targetYear+'년 데이터로 전환','s');
+}
+
+function saveCurrentYearSnapshot(year){
+  if(!S.yearSnapshots)S.yearSnapshots={};
+  S.yearSnapshots[year]={
+    kpi:JSON.parse(JSON.stringify(S.kpi||{})),
+    act:JSON.parse(JSON.stringify(S.act||{})),
+    SL:JSON.parse(JSON.stringify(SL||{})),
+    pi:JSON.parse(JSON.stringify(S.piPool||{})),
+    cm:JSON.parse(JSON.stringify(S.comments||{})),
+    tg:JSON.parse(JSON.stringify(S.tags||{})),
+    savedAt:Date.now()
+  };
+}
+
+function isCurrentYear(){return S.activeYear===CURRENT_YEAR;}
+function isYearReadonly(){return S.activeYear!==CURRENT_YEAR;}
+
+function updateYearBadge(){
+  const sel=document.getElementById('year-sel');
+  if(!sel)return;
+  if(isYearReadonly()){
+    sel.style.borderColor='var(--amber)';sel.style.color='var(--amber)';
+  }else{
+    sel.style.borderColor='var(--bd)';sel.style.color='var(--t1)';
+  }
 }
 
 function copyFBShareURL(){
@@ -2888,20 +3049,31 @@ function startFBListener(){
 }
 
 // ── PRESENCE (online users) ──
-let _presRef=null,_presMyRef=null,_presListenerOn=false;
+let _presRef=null,_presMyRef=null,_presListenerOn=false,_presHeartbeat=null;
 
 function startPresence(){
   if(!_fb||!S.curAccount)return;
-  const uid=S.curAccount.id+'_'+Date.now();
+  stopPresence(); // clean up any previous
+  const uid=S.curAccount.id+'_'+Math.random().toString(36).slice(2,8);
   _presRef=_fb.ref('skb_kpi_presence');
   _presMyRef=_presRef.child(uid);
-  // Set my presence data
   const myData={id:S.curAccount.id,name:S.curAccount.name,avatar:S.curAccount.avatar||'👤',role:S.curAccount.role,t:firebase.database.ServerValue.TIMESTAMP};
-  _presMyRef.set(myData);
-  // Remove on disconnect
-  _presMyRef.onDisconnect().remove();
-  // Also remove on page close
-  window.addEventListener('beforeunload',()=>{if(_presMyRef)_presMyRef.remove();});
+
+  // Use .info/connected to detect connection state
+  _fb.ref('.info/connected').on('value',snap=>{
+    if(snap.val()===true&&_presMyRef){
+      _presMyRef.onDisconnect().remove();
+      _presMyRef.set(myData);
+    }
+  });
+
+  // Heartbeat: update timestamp every 60s so stale entries can be detected
+  _presHeartbeat=setInterval(()=>{
+    if(_presMyRef)_presMyRef.update({t:firebase.database.ServerValue.TIMESTAMP});
+  },60000);
+
+  window.addEventListener('beforeunload',()=>{if(_presMyRef)try{_presMyRef.remove();}catch(e){}});
+
   // Listen for all presence changes
   if(!_presListenerOn){
     _presRef.on('value',snap=>{
@@ -2913,7 +3085,8 @@ function startPresence(){
 }
 
 function stopPresence(){
-  if(_presMyRef){_presMyRef.remove();_presMyRef=null;}
+  if(_presHeartbeat){clearInterval(_presHeartbeat);_presHeartbeat=null;}
+  if(_presMyRef){try{_presMyRef.remove();}catch(e){}_presMyRef=null;}
 }
 
 function renderOnlineUsers(data){
@@ -2925,10 +3098,13 @@ function renderOnlineUsers(data){
     if(!u||!u.id)return;
     if(!byId[u.id]||u.t>byId[u.id].t)byId[u.id]=u;
   });
-  // Remove stale entries (older than 5 min)
+  // Remove stale entries (no heartbeat for 2 min)
   const now=Date.now();
-  const online=Object.values(byId).filter(u=>u.t&&(now-u.t)<300000);
-  if(online.length<=1){el.innerHTML='';return;}
+  const online=Object.values(byId).filter(u=>u.t&&(now-u.t)<120000);
+  // Clean up stale entries from Firebase
+  Object.entries(data).forEach(([key,u])=>{
+    if(u&&u.t&&(now-u.t)>=120000&&_presRef){_presRef.child(key).remove();}
+  });
   // Show other users (not myself)
   const others=online.filter(u=>u.id!==(S.curAccount?.id));
   if(!others.length){el.innerHTML='';return;}
@@ -2966,11 +3142,13 @@ function applyRemoteData(d){
   if(d.piw&&typeof d.piw==='object'){const c={...d.piw};delete c._;if(Object.keys(c).length)S.piWeights=c;}
   if(d.pil&&typeof d.pil==='object'){const c={...d.pil};delete c._;if(Object.keys(c).length)S.piIndexLabels=c;}
   if(d.co&&d.co!=='_')S.corpOrg=d.co;
+  if(d.ys&&typeof d.ys==='object'){const c={...d.ys};delete c._;if(Object.keys(c).length)S.yearSnapshots=c;}
+  if(d.ay&&d.ay!=='_')S.activeYear=d.ay;
   if(d.bd){const c=Array.isArray(d.bd)?d.bd.filter(x=>x&&!(x._===0)):fixArr(d.bd)||[];if(c.length)S.board=c;}
   if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
-  try{const _sd={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,pi:S.piPool,pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ej:S.emailjs,t:d.t};localStorage.setItem(LS,JSON.stringify(_sd));}catch(e){}
+  try{const _sd={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,pi:S.piPool,pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ys:S.yearSnapshots,ay:S.activeYear,ej:S.emailjs,t:d.t};localStorage.setItem(LS,JSON.stringify(_sd));}catch(e){}
   if(S.page==='dash')renderDash();
   if(S.page==='kpi'){renderNav();renderKPI();}
   if(S.page==='pi')renderPI();
@@ -2989,7 +3167,7 @@ async function saveToFirebase(){
     try{const snap=await _fbRef.child('users').once('value');const fbUsers=snap.val();if(fbUsers){const fbCount=Object.keys(fbUsers).filter(k=>k!=='_').length;if(fbCount>_uCount){console.warn('saveToFirebase blocked: local users('+_uCount+') < Firebase('+fbCount+')');_fbSyncing=false;return;}}}catch(e){}
   }
   try{
-    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return u;})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',bd:(S.board||[]).length?S.board:[{_:0}],ej:S.emailjs||{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?S.act:{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?SL:{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return u;})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',bd:(S.board||[]).length?S.board:[{_:0}],ys:Object.keys(S.yearSnapshots||{}).length?S.yearSnapshots:{_:0},ay:S.activeYear||2026,ej:S.emailjs||{_:0},t:Date.now()};
     // Remove undefined values (Firebase rejects them)
     const d=JSON.parse(JSON.stringify(raw));
     S._lastFBTime=d.t;
@@ -3149,6 +3327,7 @@ function testFBConnection(){
     const rid=localStorage.getItem('skb_kpi_rid');
     if(rid){document.getElementById('lg-id').value=rid;setTimeout(()=>document.getElementById('lg-pw').focus(),200);}else{setTimeout(()=>document.getElementById('lg-id').focus(),200);}
   }
+  initYearSelector();updateYearBadge();
   setupAutoRefresh();
 })();
 </script>
