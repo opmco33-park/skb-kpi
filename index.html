@@ -218,7 +218,8 @@ body.light .piw-slider::-moz-range-track{background:#cbd5e1}
     <button class="tab" onclick="go('admin')" id="t-admin" style="display:none">🛡️ 관리자</button>
   </div>
   <div class="hdr-r">
-    <select id="year-sel" onchange="switchYear(Number(this.value))" style="font-size:10px;font-weight:800;padding:3px 6px;border-radius:5px;border:1px solid var(--bd);background:var(--sec);color:var(--t1);cursor:pointer;font-family:inherit"></select>
+    <select id="year-sel" onchange="switchYear(Number(this.value))" style="display:none"></select>
+    <div id="year-tabs" style="display:flex;gap:2px;margin-right:6px"></div>
     <span id="fb-status" style="font-size:9px;padding:2px 6px;border-radius:3px;display:none"></span>
     <div id="online-users" style="display:flex;align-items:center;gap:2px;margin-right:4px"></div>
     <button class="btn" onclick="toggleTheme()" id="thBtn" style="font-size:10px;padding:3px 6px">☀️</button>
@@ -2833,64 +2834,59 @@ const CURRENT_YEAR=2026;
 const YEAR_RANGE=[2024,2025,2026];
 
 function initYearSelector(){
-  const sel=document.getElementById('year-sel');if(!sel)return;
+  const el=document.getElementById('year-tabs');if(!el)return;
   const years=[...YEAR_RANGE];
-  // Add any snapshot years not in range
   Object.keys(S.yearSnapshots||{}).forEach(y=>{const n=parseInt(y);if(!isNaN(n)&&!years.includes(n))years.push(n);});
-  years.sort((a,b)=>b-a);
-  sel.innerHTML=years.map(y=>`<option value="${y}"${y===S.activeYear?' selected':''}>${y}년${y===CURRENT_YEAR?' (현재)':''}</option>`).join('');
+  years.sort((a,b)=>a-b);
+  el.innerHTML=years.map(y=>{
+    const isCur=y===CURRENT_YEAR;
+    const isActive=y===S.activeYear;
+    const hasData=!!S.yearSnapshots[y]||(y===CURRENT_YEAR&&Object.keys(S.kpi||{}).length>0);
+    return`<button onclick="switchYear(${y})" style="font-size:9px;font-weight:${isActive?'900':'600'};padding:2px 8px;border-radius:4px;border:1px solid ${isActive?(isCur?'var(--blue)':'var(--amber)'):'var(--bd)'};background:${isActive?(isCur?'rgba(59,130,246,.15)':'rgba(251,191,36,.15)'):'transparent'};color:${isActive?(isCur?'var(--blue)':'var(--amber)'):(hasData?'var(--t2)':'var(--t3)')};cursor:pointer;font-family:inherit;transition:.15s">'${String(y).slice(2)}</button>`;
+  }).join('');
+  // Also update hidden select for compatibility
+  const sel=document.getElementById('year-sel');
+  if(sel)sel.innerHTML=years.map(y=>`<option value="${y}"${y===S.activeYear?' selected':''}>${y}</option>`).join('');
 }
+
+function updateYearBadge(){}
 
 function switchYear(targetYear){
   if(targetYear===S.activeYear)return;
   const prevYear=S.activeYear;
 
-  // 1. Save current year data as snapshot
+  // 1. Save current data as snapshot
   saveCurrentYearSnapshot(prevYear);
 
   // 2. Load target year
   const snap=S.yearSnapshots[targetYear];
   if(snap){
-    if(snap.kpi)S.kpi=JSON.parse(JSON.stringify(snap.kpi));else S.kpi={};
-    if(snap.act)S.act=JSON.parse(JSON.stringify(snap.act));else S.act={};
-    if(snap.SL){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));}else{Object.keys(SL).forEach(k=>delete SL[k]);}
-    if(snap.pi)S.piPool=JSON.parse(JSON.stringify(snap.pi));else S.piPool={};
-    if(snap.cm)S.comments=JSON.parse(JSON.stringify(snap.cm));else S.comments={};
-    if(snap.tg)S.tags=JSON.parse(JSON.stringify(snap.tg));else S.tags={};
+    S.kpi=JSON.parse(JSON.stringify(snap.kpi||{}));
+    S.act=JSON.parse(JSON.stringify(snap.act||{}));
+    Object.keys(SL).forEach(k=>delete SL[k]);if(snap.SL)Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));
+    S.piPool=JSON.parse(JSON.stringify(snap.pi||{}));
+    S.comments=JSON.parse(JSON.stringify(snap.cm||{}));
+    S.tags=JSON.parse(JSON.stringify(snap.tg||{}));
   }else{
     S.kpi={};S.act={};Object.keys(SL).forEach(k=>delete SL[k]);S.piPool={};S.comments={};S.tags={};
   }
 
   S.activeYear=targetYear;
-  // Reset nav selection for new year's orgs
   const gks=ordKeys();
   if(gks.length){S.aGrp=gks[0];S.aUnit=Object.keys(S.kpi[gks[0]]?.units||{})[0]||null;}else{S.aGrp=null;S.aUnit=null;}
-  
+
   save();
-
-  // Update UI safely
   initYearSelector();
-  updateYearBadge();
-  try{renderAll();}catch(e){console.warn('renderAll error on year switch:',e);}
-  // Ensure admin tab stays visible for admins
   updateAuthUI();
-  // Navigate to dash (safest page)
+  try{renderAll();}catch(e){console.warn('renderAll:',e);}
   go('dash');
-  if(!snap)toast(targetYear+'년 데이터가 없습니다. 관리자 콘솔에서 CSV 업로드 또는 직접 등록하세요.','i');
-  else toast(targetYear+'년 데이터로 전환','s');
-}
 
-function saveCurrentYearSnapshot(year){
-  if(!S.yearSnapshots)S.yearSnapshots={};
-  S.yearSnapshots[year]={
-    kpi:JSON.parse(JSON.stringify(S.kpi||{})),
-    act:JSON.parse(JSON.stringify(S.act||{})),
-    SL:JSON.parse(JSON.stringify(SL||{})),
-    pi:JSON.parse(JSON.stringify(S.piPool||{})),
-    cm:JSON.parse(JSON.stringify(S.comments||{})),
-    tg:JSON.parse(JSON.stringify(S.tags||{})),
-    savedAt:Date.now()
-  };
+  if(!snap){
+    if(S.isAdmin)toast("'"+String(targetYear).slice(2)+'년 — 데이터 없음. 관리자 콘솔에서 등록하세요.','i');
+    else toast("'"+String(targetYear).slice(2)+'년 — 데이터 미등록','i');
+  }else{
+    toast("'"+String(targetYear).slice(2)+'년 로드 완료','s');
+  }
 }
 
 function isCurrentYear(){return S.activeYear===CURRENT_YEAR;}
