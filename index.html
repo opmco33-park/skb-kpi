@@ -261,11 +261,11 @@ body.light .piw-slider::-moz-range-track{background:#cbd5e1}
 <div class="pg on" id="pg-dash"><div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn" onclick="exportDashImage()" style="font-size:9px;padding:3px 8px">📷 이미지 저장</button></div><div class="db" id="dash-root"></div></div>
 
 <!-- ═══ KPI ═══ -->
-<div class="pg" id="pg-kpi"><div id="kpi-search-bar" style="margin-bottom:8px;display:none"><input class="sinp" placeholder="🔍 지표 검색..." style="width:100%;font-size:11px;padding:5px 10px" oninput="kpiSearch(this.value)" id="kpi-search-inp"/></div>
+<div class="pg" id="pg-kpi">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:8px">
     <div><div style="font-size:17px;font-weight:900">KPI 관리</div><div style="font-size:11px;color:var(--t2);margin-top:2px">조직별 KPI · 실적 현황 · 점수 조회</div></div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-      <div class="srch"><input id="si" placeholder="KPI 지표 검색..." autocomplete="off" oninput="onSI(this.value)" onkeydown="if(event.key==='Enter')doSearch();if(event.key==='Escape'){document.getElementById('sr').style.display='none';}"/><button onclick="doSearch()">🔍</button></div>
+      <input class="sinp" id="kpi-search-inp" placeholder="🔍 지표 검색..." style="font-size:11px;padding:4px 10px;width:180px;border-radius:6px" oninput="filterKPISearch(this.value)"/>
       <button class="btn" onclick="exportCSV()">📊 Excel 내보내기</button>
       <div id="kpi-edit-bar" style="display:none;gap:5px;align-items:center">
         <label style="cursor:pointer"><span class="btn" style="font-size:10px">⬆ 지표 업로드</span><input type="file" style="display:none" accept=".csv" onchange="uploadKpiCSVScoped(this.files[0]);this.value=''"/></label>
@@ -275,9 +275,8 @@ body.light .piw-slider::-moz-range-track{background:#cbd5e1}
       </div>
     </div>
   </div>
-  <div id="sr" style="display:none;margin-bottom:14px"></div>
   <div id="onav" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)"></div>
-  <div style="margin-bottom:8px;display:flex;gap:6px" id="kpi-search-bar"><input class="sinp" id="kpi-search-inp" placeholder="🔍 지표 검색..." style="flex:1;font-size:11px" oninput="filterKPISearch(this.value)"/></div><div id="kc"></div>
+  <div id="kc"></div>
 </div>
 
 <!-- ═══ CHANGELOG ═══ -->
@@ -3210,26 +3209,36 @@ function applyRemoteData(d){
   const stripP=o=>{if(!o||typeof o!=='object')return o;if(Array.isArray(o))return o.filter(x=>!(x&&typeof x==='object'&&x._===0));const c={...o};delete c._;return c;};
   if(d.oo)d.oo=fixArr(d.oo);if(d.wg)d.wg=fixArr(d.wg);if(d.al)d.al=fixArr(d.al);if(d.log)d.log=fixArr(d.log);
   if(d.kpi)d.kpi=fixKpi(d.kpi);if(d.pi)d.pi=fixPi(d.pi);
-  if(d.act){const c=fbKeyRestore(stripP(d.act));if(Object.keys(c).length)S.act=c;}
-  if(d.ascr){const c=stripP(d.ascr);if(Object.keys(c).length)S.ascr=c;}
-  if(d.SL){const c=fbKeyRestore(stripP(d.SL));if(Object.keys(c).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,c);}}
-  if(d.kpi){const c=stripP(d.kpi);if(Object.keys(c).length)S.kpi=c;}
+
+  // CRITICAL: Only apply kpi/act/SL/pi/cm/tg if remote's activeYear matches local
+  const remoteYear=Number(d.ay)||2026;
+  const localYear=Number(S.activeYear)||2026;
+  const sameYear=remoteYear===localYear;
+
+  if(sameYear){
+    if(d.act){const c=fbKeyRestore(stripP(d.act));if(Object.keys(c).length)S.act=c;}
+    if(d.ascr){const c=stripP(d.ascr);if(Object.keys(c).length)S.ascr=c;}
+    if(d.SL){const c=fbKeyRestore(stripP(d.SL));if(Object.keys(c).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,c);}}
+    if(d.kpi){const c=stripP(d.kpi);if(Object.keys(c).length)S.kpi=c;}
+    if(d.pi){const c=stripP(d.pi);if(Object.keys(c).length)S.piPool=c;}
+    if(d.cm){const c=stripP(d.cm);if(Object.keys(c).length)S.comments=c;}
+    if(d.tg){const c=stripP(d.tg);if(Object.keys(c).length)S.tags=c;}
+  }
+
+  // Always apply year-independent data
   if(d.users){let c=stripP(d.users);c=fbKeyRestore(c);if(Object.keys(c).length){Object.values(c).forEach(u=>{if(u.orgs){u.orgs=Array.isArray(u.orgs)?u.orgs.filter(x=>x&&x!=='_none'):[];}else u.orgs=[];if(u.perms){const p=stripP(u.perms);u.perms=p||{};}else u.perms={};});S.users=c;}}
   if(d.oo&&Array.isArray(d.oo)){const c=d.oo.filter(x=>x&&x!=='_');if(c.length)S.orgOrder=c;}
   if(d.ann)S.announcement=d.ann;
   if(d.wg&&Array.isArray(d.wg)){const c=d.wg.filter(x=>x&&!(x._===0));if(c.length)S.widgets=c;}
   if(d.yr){const c=stripP(d.yr);if(Object.keys(c).length)S.yearly=c;}
   if(d.dl){const c=stripP(d.dl);if(Object.keys(c).length)S.deadlines=c;}
-  if(d.cm){const c=stripP(d.cm);if(Object.keys(c).length)S.comments=c;}
-  if(d.tg){const c=stripP(d.tg);if(Object.keys(c).length)S.tags=c;}
   if(d.al&&Array.isArray(d.al)){const c=d.al.filter(x=>x&&!(x._===0));if(c.length)S.alerts=c;}
   if(d.log&&Array.isArray(d.log)){const c=d.log.filter(x=>x&&x!=='_');if(c.length)S.log=c;}
-  if(d.pi){const c=stripP(d.pi);if(Object.keys(c).length)S.piPool=c;}
   if(d.piw&&typeof d.piw==='object'){const c={...d.piw};delete c._;if(Object.keys(c).length)S.piWeights=c;}
   if(d.pil&&typeof d.pil==='object'){const c={...d.pil};delete c._;if(Object.keys(c).length)S.piIndexLabels=c;}
   if(d.co&&d.co!=='_')S.corpOrg=d.co;
   if(d.ys&&typeof d.ys==='object'){const c={...d.ys};delete c._;if(Object.keys(c).length)S.yearSnapshots=c;}
-  if(d.ay)S.activeYear=Number(d.ay)||2026;
+  // Do NOT override local activeYear from remote
   if(d.bd){const c=Array.isArray(d.bd)?d.bd.filter(x=>x&&!(x._===0)):fixArr(d.bd)||[];if(c.length)S.board=c;}
   if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
