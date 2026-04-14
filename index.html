@@ -3057,7 +3057,8 @@ function initYearSelector(){
     const bg=isActive?(isCur?'linear-gradient(135deg,rgba(59,130,246,.2),rgba(96,165,250,.1))':'linear-gradient(135deg,rgba(251,191,36,.2),rgba(251,191,36,.1))'):(hasData?'rgba(148,163,184,.08)':'transparent');
     const clr=isActive?(isCur?'#60a5fa':'#fbbf24'):(hasData?'#94a3b8':'#64748b');
     const bdr=isActive?(isCur?'#60a5fa':'#fbbf24'):(hasData?'rgba(148,163,184,.3)':'rgba(148,163,184,.15)');
-    return`<button onclick="switchYear(${y})" style="font-size:10px;font-weight:${isActive?'900':'700'};padding:3px 10px;border-radius:5px;border:1.5px solid ${bdr};background:${bg};color:${clr};cursor:pointer;font-family:inherit;transition:.15s;letter-spacing:0.5px" onmouseover="this.style.background='rgba(96,165,250,.15)';this.style.color='#60a5fa'" onmouseout="this.style.background='${isActive?(isCur?'rgba(59,130,246,.2)':'rgba(251,191,36,.2)'):(hasData?'rgba(148,163,184,.08)':'transparent')}';this.style.color='${clr}'">'${String(y).slice(2)}</button>`;
+    const bgFlat=isActive?(isCur?'rgba(59,130,246,.2)':'rgba(251,191,36,.2)'):(hasData?'rgba(148,163,184,.08)':'transparent');
+    return`<button onclick="switchYear(${y})" style="font-size:10px;font-weight:${isActive?'900':'700'};padding:3px 10px;border-radius:5px;border:1.5px solid ${bdr};background:${bg};color:${clr};cursor:pointer;font-family:inherit;transition:.15s;letter-spacing:0.5px" onmouseover="this.style.background='rgba(96,165,250,.15)';this.style.color='#60a5fa'" onmouseout="this.style.background='${bgFlat}';this.style.color='${clr}'">'${String(y).slice(2)}</button>`;
   }).join('');
 }
 
@@ -3065,43 +3066,77 @@ function updateYearBadge(){}
 
 function switchYear(targetYear){
   targetYear=Number(targetYear);
-  if(targetYear===S.activeYear){hideLoading();return;}
+  if(targetYear===S.activeYear)return;
   showLoading();
   const prevYear=S.activeYear;
+  const curPage=S.page||'dash';
 
-  // 1. Save current data as snapshot
+  // 1. Save current year data as snapshot
   saveCurrentYearSnapshot(prevYear);
 
-  // 2. Load target year
+  // 2. Load target year data
   const snap=S.yearSnapshots[targetYear];
   if(snap){
     S.kpi=JSON.parse(JSON.stringify(snap.kpi||{}));
     S.act=JSON.parse(JSON.stringify(snap.act||{}));
-    Object.keys(SL).forEach(k=>delete SL[k]);if(snap.SL)Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));
+    S.ascr=JSON.parse(JSON.stringify(snap.ascr||{}));
+    Object.keys(SL).forEach(k=>delete SL[k]);
+    if(snap.SL)Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));
     S.piPool=JSON.parse(JSON.stringify(snap.pi||{}));
     S.comments=JSON.parse(JSON.stringify(snap.cm||{}));
     S.tags=JSON.parse(JSON.stringify(snap.tg||{}));
   }else{
-    S.kpi={};S.act={};Object.keys(SL).forEach(k=>delete SL[k]);S.piPool={};S.comments={};S.tags={};
+    S.kpi={};S.act={};S.ascr={};
+    Object.keys(SL).forEach(k=>delete SL[k]);
+    S.piPool={};S.comments={};S.tags={};
   }
 
   S.activeYear=targetYear;
-  const gks=ordKeys();
-  if(gks.length){S.aGrp=gks[0];S.aUnit=Object.keys(S.kpi[gks[0]]?.units||{})[0]||null;}else{S.aGrp=null;S.aUnit=null;}
 
-  save();
+  // Reset nav
+  const gks=ordKeys();
+  if(gks.length){S.aGrp=gks[0];S.aUnit=Object.keys(S.kpi[gks[0]]?.units||{})[0]||null;}
+  else{S.aGrp=null;S.aUnit=null;}
+  if(!S.dbOrg||!gks.includes(S.dbOrg))S.dbOrg=gks[0]||null;
+
+  // Save locally + Firebase snapshots only (NOT main kpi/act)
+  saveSwitchToLocalStorage();
+  saveSwitchToFirebase();
+
   initYearSelector();
   updateAuthUI();
   try{renderAll();}catch(e){console.warn('renderAll:',e);}
   hideLoading();
-  go('dash');
+  go(curPage);
 
   if(!snap){
-    if(S.isAdmin)toast("'"+String(targetYear).slice(2)+'년 — 데이터 없음. 관리자 콘솔에서 등록하세요.','i');
-    else toast("'"+String(targetYear).slice(2)+'년 — 데이터 미등록','i');
+    if(S.isAdmin)toast("'"+String(targetYear).slice(2)+"년 — 데이터 없음. 관리자 콘솔에서 등록하세요.",'i');
+    else toast("'"+String(targetYear).slice(2)+"년 — 데이터 미등록",'i');
   }else{
-    toast("'"+String(targetYear).slice(2)+'년 로드 완료','s');
+    toast("'"+String(targetYear).slice(2)+"년 로드 완료",'s');
   }
+}
+
+function saveSwitchToLocalStorage(){
+  try{
+    const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ys:S.yearSnapshots,ay:S.activeYear,ej:S.emailjs,t:Date.now()};
+    localStorage.setItem(LS,JSON.stringify(d));
+  }catch(e){}
+}
+
+function saveSwitchToFirebase(){
+  if(!_fbReady||!_fbRef)return;
+  _fbSyncing=true;
+  try{
+    const updates={};
+    updates['ys']=Object.keys(S.yearSnapshots||{}).length?S.yearSnapshots:{_:0};
+    updates['ay']=S.activeYear||2026;
+    updates['t']=Date.now();
+    S._lastFBTime=updates['t'];
+    _fbRef.update(updates).then(()=>{
+      setTimeout(()=>{_fbSyncing=false;},300);
+    }).catch(e=>{_fbSyncing=false;});
+  }catch(e){_fbSyncing=false;}
 }
 
 function saveCurrentYearSnapshot(year){
@@ -3109,6 +3144,7 @@ function saveCurrentYearSnapshot(year){
   S.yearSnapshots[year]={
     kpi:JSON.parse(JSON.stringify(S.kpi||{})),
     act:JSON.parse(JSON.stringify(S.act||{})),
+    ascr:JSON.parse(JSON.stringify(S.ascr||{})),
     SL:JSON.parse(JSON.stringify(SL||{})),
     pi:JSON.parse(JSON.stringify(S.piPool||{})),
     cm:JSON.parse(JSON.stringify(S.comments||{})),
@@ -3123,7 +3159,6 @@ function isYearReadonly(){
   if(S.curAccount?.role==='admin')return false;
   return true;
 }
-
 
 
 // ══ FIREBASE.JS — Firebase, presence, notifications ══
@@ -3300,6 +3335,21 @@ function renderOnlineUsers(data){
   await initH();
   const has=load();
   ensureDefaultAdmin();
+
+  // Always start with current year — if loaded a different year, restore current year from snapshot
+  if(S.activeYear!==CURRENT_YEAR&&S.yearSnapshots[CURRENT_YEAR]){
+    const snap=S.yearSnapshots[CURRENT_YEAR];
+    S.kpi=JSON.parse(JSON.stringify(snap.kpi||{}));
+    S.act=JSON.parse(JSON.stringify(snap.act||{}));
+    S.ascr=JSON.parse(JSON.stringify(snap.ascr||{}));
+    Object.keys(SL).forEach(k=>delete SL[k]);
+    if(snap.SL)Object.assign(SL,JSON.parse(JSON.stringify(snap.SL)));
+    S.piPool=JSON.parse(JSON.stringify(snap.pi||{}));
+    S.comments=JSON.parse(JSON.stringify(snap.cm||{}));
+    S.tags=JSON.parse(JSON.stringify(snap.tg||{}));
+  }
+  S.activeYear=CURRENT_YEAR;
+
   if(S.theme==='light')document.body.classList.add('light');
   document.getElementById('thBtn').textContent=S.theme==='light'?'🌙':'☀️';
 
@@ -3317,7 +3367,11 @@ function renderOnlineUsers(data){
   }
 
   if(has||_fbReady){
-    if(Object.keys(S.kpi).length){const gks=ordKeys();if(!S.aGrp){S.aGrp=gks[0];S.aUnit=Object.keys(S.kpi[gks[0]].units)[0];}if(!S.dbOrg)S.dbOrg=gks.find(g=>g!=='전사KPI')||gks[0];}
+    if(Object.keys(S.kpi).length){
+      const gks=ordKeys();
+      if(!S.aGrp){S.aGrp=gks[0];S.aUnit=gks[0]?Object.keys(S.kpi[gks[0]]?.units||{})[0]:null;}
+      if(!S.dbOrg)S.dbOrg=gks.find(g=>g!==getCorpOrg())||gks[0];
+    }
   }
 
   if(!fbCfg&&!has){
@@ -3331,6 +3385,7 @@ function renderOnlineUsers(data){
   initYearSelector();updateYearBadge();
   setupAutoRefresh();
 })();
+
 
 </script>
 </body>
