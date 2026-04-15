@@ -624,7 +624,7 @@ function chgPw(){}
 function clearAll(){if(!confirm('⚠️ 전체 초기화\n\n모든 KPI 지표, 실적, 사용자 계정, 코멘트, 태그, 이력이 삭제됩니다.\nFirebase 데이터도 함께 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?'))return;if(!confirm('정말로 전체 초기화를 진행하시겠습니까?'))return;try{if(_fbRef){_fbRef.off();}localStorage.removeItem(LS);if(_fbReady&&_fbRef){_fbRef.remove().then(()=>{location.reload();}).catch(()=>{location.reload();});}else{location.reload();}}catch(e){console.error('clearAll error:',e);localStorage.removeItem(LS);location.reload();}}
 function exportAll(){const d={act:S.act,ascr:S.ascr,SL,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,v:'v4'};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='KPI_'+S.activeYear+'_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('백업 완료','s');}
 function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.kpi)Object.assign(S.kpi,d.kpi);if(d.users)Object.assign(S.users,d.users);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ys)S.yearSnapshots=d.ys;if(d.ay)S.activeYear=Number(d.ay)||2026;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.ej)S.emailjs=d.ej;save();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
-function renderAll(){renderNav();renderKPI();renderDash();renderAnn();}
+function renderAll(){try{renderNav();}catch(e){console.warn('renderNav:',e);}try{renderKPI();}catch(e){console.warn('renderKPI:',e);}try{renderDash();}catch(e){console.warn('renderDash:',e);}try{renderAnn();}catch(e){console.warn('renderAnn:',e);}}
 
 // ══════════════════════════════════════════════════════════════
 // CHANGELOG & UNDO
@@ -3206,7 +3206,7 @@ function initFirebase(cfg){
 
 function startFBListener(){
   if(!_fbReady||!_fbRef)return;
-  _fbRef.on('value',snap=>{if(_fbSyncing||_yearSwitching)return;const d=snap.val();if(d&&d.t&&d.t>(S._lastFBTime||0)){S._lastFBTime=d.t;applyRemoteData(d);updateFBStatus('synced');}});
+  _fbRef.on('value',snap=>{if(_fbSyncing||_yearSwitching)return;const d=snap.val();if(d&&d.t&&d.t>(S._lastFBTime||0)){S._lastFBTime=d.t;applyRemoteData(d,false);updateFBStatus('synced');}});
 }
 
 async function saveToFirebase(){
@@ -3223,11 +3223,11 @@ async function saveToFirebase(){
 function loadFromFirebase(){
   return new Promise((resolve)=>{
     if(!_fbReady||!_fbRef){resolve(false);return;}
-    _fbRef.once('value').then(snap=>{const d=snap.val();if(d){applyRemoteData(d);S._lastFBTime=d.t||0;resolve(true);}else resolve(false);}).catch(e=>{console.error('Firebase load error:',e);resolve(false);});
+    _fbRef.once('value').then(snap=>{const d=snap.val();if(d){applyRemoteData(d,true);S._lastFBTime=d.t||0;resolve(true);}else resolve(false);}).catch(e=>{console.error('Firebase load error:',e);resolve(false);});
   });
 }
 
-function applyRemoteData(d){
+function applyRemoteData(d,isExplicitLoad){
   const fixArr=v=>{if(v&&typeof v==='object'&&!Array.isArray(v)){const ks=Object.keys(v);if(ks.length&&ks.every(k=>/^\d+$/.test(k)))return ks.sort((a,b)=>+a-+b).map(k=>v[k]);}return v;};
   const fixKpi=kpi=>{if(!kpi||typeof kpi!=='object')return kpi;Object.values(kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;un.sections=fixArr(un.sections)||[];if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{sec.items=fixArr(sec.items)||[];if(!Array.isArray(sec.items))sec.items=[];});});});return kpi;};
   const fixPi=pi=>{if(!pi||typeof pi!=='object')return pi;Object.keys(pi).forEach(g=>{pi[g]=fixArr(pi[g])||[];if(!Array.isArray(pi[g]))pi[g]=[];});return pi;};
@@ -3235,13 +3235,8 @@ function applyRemoteData(d){
   if(d.oo)d.oo=fixArr(d.oo);if(d.wg)d.wg=fixArr(d.wg);if(d.al)d.al=fixArr(d.al);if(d.log)d.log=fixArr(d.log);
   if(d.kpi)d.kpi=fixKpi(d.kpi);if(d.pi)d.pi=fixPi(d.pi);
 
-  // CRITICAL: Only apply kpi/act/SL/pi/cm/tg if NOT in a year-switching state
-  // and remote's activeYear matches local
-  const remoteYear=Number(d.ay)||2026;
-  const localYear=Number(S.activeYear)||2026;
-  const sameYear=remoteYear===localYear&&!_yearSwitching;
-
-  if(sameYear){
+  // KPI data: only apply on explicit load (INIT), never from listener
+  if(isExplicitLoad){
     if(d.act){const c=fbKeyRestore(stripP(d.act));if(Object.keys(c).length)S.act=c;}
     if(d.ascr){const c=stripP(d.ascr);if(Object.keys(c).length)S.ascr=c;}
     if(d.SL){const c=fbKeyRestore(stripP(d.SL));if(Object.keys(c).length){Object.keys(SL).forEach(k=>delete SL[k]);Object.assign(SL,c);}}
@@ -3264,13 +3259,15 @@ function applyRemoteData(d){
   if(d.pil&&typeof d.pil==='object'){const c={...d.pil};delete c._;if(Object.keys(c).length)S.piIndexLabels=c;}
   if(d.co&&d.co!=='_')S.corpOrg=d.co;
   if(d.ys&&typeof d.ys==='object'){const c={...d.ys};delete c._;if(Object.keys(c).length)S.yearSnapshots=c;}
-  // Do NOT override local activeYear from remote
   if(d.bd){const c=Array.isArray(d.bd)?d.bd.filter(x=>x&&!(x._===0)):fixArr(d.bd)||[];if(c.length)S.board=c;}
   if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
   try{const _sd={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,pi:S.piPool,pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ys:S.yearSnapshots,ay:S.activeYear,ej:S.emailjs,t:d.t};localStorage.setItem(LS,JSON.stringify(_sd));}catch(e){}
-  if(S.page==='dash')renderDash();if(S.page==='kpi'){renderNav();renderKPI();}if(S.page==='pi')renderPI();if(S.page==='board')renderBoard();
+  if(S.page==='dash')try{renderDash();}catch(e){}
+  if(S.page==='kpi')try{renderNav();renderKPI();}catch(e){}
+  if(S.page==='pi')try{renderPI();}catch(e){}
+  if(S.page==='board')try{renderBoard();}catch(e){}
 }
 
 function sysUpdateFB(){
