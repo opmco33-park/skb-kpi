@@ -258,7 +258,7 @@ body.light .piw-slider::-moz-range-track{background:#cbd5e1}
 </div>
 
 <!-- ═══ DASHBOARD ═══ -->
-<div class="pg on" id="pg-dash"><div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn" onclick="exportDashImage()" style="font-size:9px;padding:3px 8px">📷 이미지 저장</button></div><div class="db" id="dash-root"></div></div>
+<div class="pg on" id="pg-dash"><div class="db" id="dash-root"></div></div>
 
 <!-- ═══ KPI ═══ -->
 <div class="pg" id="pg-kpi">
@@ -1019,9 +1019,10 @@ function renderDash(){const root=document.getElementById('dash-root');const has=
   if(!vis.length){root.innerHTML=yearBanner+'<div style="text-align:center;padding:40px;color:var(--t3)">표시할 위젯이 없습니다</div>';return;}
 // Ensure S.dbOrg is set before rendering any widget
 if(has){const gks=visibleOrgs().filter(g=>g!=='전사KPI');if(!S.dbOrg||!gks.includes(S.dbOrg))S.dbOrg=gks[0]||null;}
-const rows={};vis.forEach(w=>{const r=w.row!=null?w.row:999;if(!rows[r])rows[r]=[];rows[r].push(w);});const sortedRows=Object.keys(rows).map(Number).sort((a,b)=>a-b);let html='';sortedRows.forEach(r=>{const wgs=rows[r];let rowHtml='';wgs.forEach(w=>{const inner=renderWidget(w,has);const sz=w.size||'100';if(inner!==null&&inner!==undefined){rowHtml+=`<div class="wg wg-${sz}">${inner}</div>`;}});if(rowHtml)html+=`<div class="db-row">${rowHtml}</div>`;});root.innerHTML=yearBanner+(html||'<div style="text-align:center;padding:40px;color:var(--t3)">표시할 데이터가 없습니다</div>');}
+const rows={};vis.forEach(w=>{const r=w.row!=null?w.row:999;if(!rows[r])rows[r]=[];rows[r].push(w);});const sortedRows=Object.keys(rows).map(Number).sort((a,b)=>a-b);let html='';try{sortedRows.forEach(r=>{const wgs=rows[r];let rowHtml='';wgs.forEach(w=>{const inner=renderWidget(w,has);const sz=w.size||'100';if(inner!==null&&inner!==undefined&&inner!==''){rowHtml+=`<div class="wg wg-${sz}">${inner}</div>`;}});if(rowHtml)html+=`<div class="db-row">${rowHtml}</div>`;});}catch(e){console.warn('renderDash error:',e);html='';}root.innerHTML=yearBanner+(html||'<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:10px">📊</div><div style="font-size:13px;font-weight:700">데이터가 없습니다</div><div style="font-size:11px;margin-top:4px">KPI 데이터를 등록하면 대시보드가 표시됩니다</div></div>');}
 
 function renderWidget(w,has){
+  try{
   if(w.type==='total') return wTotal(has);
   if(w.type==='corp_chart') return wCorpChart(has);
   if(w.type==='org_chart') return wOrgChart(has);
@@ -1036,6 +1037,7 @@ function renderWidget(w,has){
   if(w.type==='yoy_trend') return wYoYTrend(has)||'';
   if(w.type==='pi_scoring') return wPIScoring(has);
   return '';
+  }catch(e){console.warn('Widget render error('+w.type+'):',e);return'';}
 }
 
 function wTotal(has){
