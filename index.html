@@ -526,7 +526,7 @@ function go(p){
   document.getElementById(m[p])?.classList.add('on');document.getElementById('t-'+p)?.classList.add('on');
   // Year tabs: only show on dash/kpi
   const yt=document.getElementById('year-tabs');if(yt)yt.style.display=(p==='dash'||p==='kpi')?'flex':'none';
-  if(p==='dash'){renderDash();renderAnn();}if(p==='kpi'){const vo=visibleOrgs();if(!S.aGrp||!vo.includes(S.aGrp)){S.aGrp=vo[0]||null;S.aUnit=S.aGrp?Object.keys(S.kpi[S.aGrp]?.units||{})[0]:null;}renderNav();renderKPI();setTimeout(addReportBtn,50);const eb=document.getElementById('kpi-edit-bar');if(eb)eb.style.display=vo.some(g=>canEdit(g))?'flex':'none';}if(p==='pi')renderPI();if(p==='log')renderLog();if(p==='admin')renderAdm();if(p==='board')renderBoard();
+  if(p==='dash'){try{renderDash();renderAnn();}catch(e){console.warn('go dash:',e);}}if(p==='kpi'){try{const vo=visibleOrgs();if(!S.aGrp||!vo.includes(S.aGrp)){S.aGrp=vo[0]||null;S.aUnit=S.aGrp?Object.keys(S.kpi[S.aGrp]?.units||{})[0]:null;}renderNav();renderKPI();setTimeout(addReportBtn,50);const eb=document.getElementById('kpi-edit-bar');if(eb)eb.style.display=vo.some(g=>canEdit(g))?'flex':'none';}catch(e){console.warn('go kpi:',e);const kc=document.getElementById('kc');if(kc)kc.innerHTML='<div style="text-align:center;padding:50px;color:var(--t3)"><div style="font-size:42px;margin-bottom:14px">📋</div><div style="font-size:15px;font-weight:800;color:var(--t2)">데이터가 없습니다</div></div>';}}if(p==='pi')try{renderPI();}catch(e){}if(p==='log')try{renderLog();}catch(e){}if(p==='admin')try{renderAdm();}catch(e){}if(p==='board')try{renderBoard();}catch(e){}
 }
 function toggleTheme(){S.theme=S.theme==='dark'?'light':'dark';document.body.classList.toggle('light',S.theme==='light');document.getElementById('thBtn').textContent=S.theme==='light'?'🌙':'☀️';save();}
 
@@ -3045,14 +3045,13 @@ function initYearSelector(){
 
 function updateYearBadge(){}
 
-// Year switching lock — blocks Firebase listener during year transition
 let _yearSwitching=false;
 
 function switchYear(targetYear){
   targetYear=Number(targetYear);
   if(targetYear===S.activeYear)return;
   showLoading();
-  _yearSwitching=true; // Block Firebase listener
+  _yearSwitching=true;
   const prevYear=S.activeYear;
   const curPage=S.page||'dash';
 
@@ -3084,21 +3083,31 @@ function switchYear(targetYear){
   else{S.aGrp=null;S.aUnit=null;}
   if(!S.dbOrg||!gks.includes(S.dbOrg))S.dbOrg=gks[0]||null;
 
-  // Save to localStorage only
-  saveSwitchToLocalStorage();
+  // 3. FORCE clear all page DOMs before rendering — prevents stale content
+  const dashRoot=document.getElementById('dash-root');if(dashRoot)dashRoot.innerHTML='';
+  const kpiNav=document.getElementById('onav');if(kpiNav)kpiNav.innerHTML='';
+  const kpiContent=document.getElementById('kc');if(kpiContent)kpiContent.innerHTML='';
 
-  // Firebase: update snapshots only, with syncing lock to prevent listener from overwriting
+  // 4. Save locally + Firebase snapshots only
+  saveSwitchToLocalStorage();
   _fbSyncing=true;
   saveSwitchToFirebase();
 
+  // 5. Re-render everything
   initYearSelector();
   updateAuthUI();
-  try{renderAll();}catch(e){console.warn('renderAll:',e);}
-  hideLoading();
-  go(curPage);
 
-  // Release year switching lock after Firebase roundtrip settles
-  setTimeout(()=>{_yearSwitching=false;},2000);
+  try{renderDash();}catch(e){console.warn('renderDash:',e);}
+  try{renderNav();}catch(e){console.warn('renderNav:',e);}
+  try{renderKPI();}catch(e){console.warn('renderKPI:',e);}
+  try{renderAnn();}catch(e){console.warn('renderAnn:',e);}
+
+  hideLoading();
+
+  // 6. Navigate — go() also renders, but DOMs are already updated above
+  try{go(curPage);}catch(e){console.warn('go:',e);}
+
+  setTimeout(()=>{_yearSwitching=false;},3000);
 
   if(!snap){
     if(S.isAdmin)toast("'"+String(targetYear).slice(2)+"년 — 데이터 없음. 관리자 콘솔에서 등록하세요.",'i');
