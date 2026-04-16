@@ -285,6 +285,7 @@ body.light .piw-slider::-moz-range-track{background:#cbd5e1}
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:8px">
     <div><div style="font-size:17px;font-weight:900">PI Pool</div><div style="font-size:11px;color:var(--t2);margin-top:2px">KPI 후보 지표 관리 · Scoring · 격상</div></div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-p" style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border-color:#7c3aed" onclick="openAIReportAnalyzer()" title="보고서를 업로드하여 PI 자동 추출/평가">🤖 AI 보고서 분석</button>
       <input class="sinp" id="pi-search-header" placeholder="🔍 PI 검색..." style="font-size:11px;padding:4px 10px;width:180px;border-radius:6px" oninput="S._piFilter=this.value;renderPIPool()"/>
     </div>
   </div>
@@ -491,6 +492,7 @@ const S={
   activeYear:2026, // currently viewing year
   // EmailJS config {serviceId, templateId, publicKey}
   emailjs:null,
+  aiConfig:null,
 };
 const SL={};
 const AVATARS=['👨‍💼','👩‍💼','👨‍💻','👩‍💻','🧑‍💼','👨‍🔬','👩‍🔬','🧑‍💻','👨‍🏫','👩‍🏫','🦸‍♂️','🦸‍♀️','🧑‍🚀','👨‍🎨','👩‍🎨','🧙‍♂️','🧙‍♀️','🦊','🐻','🐼','🦁','🐯','🐸','🦉','🐧','👨‍⚕️','👩‍⚕️','👨‍🍳','👩‍🍳','👨‍🌾','👩‍🌾','👨‍🚒','👩‍🚒','🧑‍🎓','👮‍♂️','👮‍♀️','🕵️‍♂️','🕵️‍♀️','🧑‍🏭','🧑‍⚖️','🦹‍♂️','🦹‍♀️','🧝‍♂️','🧝‍♀️','🧛‍♂️','🧜‍♀️','🐶','🐱','🐰','🐨','🐷','🦄','🐲','🦅','🐬','🦋','🌸','🌟','⚡','🔥','💎','🎯','🎲','🎵','🏆','🚀'];
@@ -525,7 +527,7 @@ function go(p){
   const m={dash:'pg-dash',kpi:'pg-kpi',pi:'pg-pi',log:'pg-log',board:'pg-board',admin:'pg-admin'};
   document.getElementById(m[p])?.classList.add('on');document.getElementById('t-'+p)?.classList.add('on');
   // Year tabs: only show on dash/kpi
-  const yt=document.getElementById('year-tabs');if(yt)yt.style.display=(p==='dash'||p==='kpi')?'flex':'none';
+  const yt=document.getElementById('year-tabs');if(yt)yt.style.display=(p==='kpi')?'flex':'none';
   if(p==='dash'){try{renderDash();renderAnn();}catch(e){console.warn('go dash:',e);}}if(p==='kpi'){try{const vo=visibleOrgs();if(!S.aGrp||!vo.includes(S.aGrp)){S.aGrp=vo[0]||null;S.aUnit=S.aGrp?Object.keys(S.kpi[S.aGrp]?.units||{})[0]:null;}renderNav();renderKPI();setTimeout(addReportBtn,50);const eb=document.getElementById('kpi-edit-bar');if(eb)eb.style.display=vo.some(g=>canEdit(g))?'flex':'none';}catch(e){console.warn('go kpi:',e);const kc=document.getElementById('kc');if(kc)kc.innerHTML='<div style="text-align:center;padding:50px;color:var(--t3)"><div style="font-size:42px;margin-bottom:14px">📋</div><div style="font-size:15px;font-weight:800;color:var(--t2)">데이터가 없습니다</div></div>';}}if(p==='pi')try{renderPI();}catch(e){}if(p==='log')try{renderLog();}catch(e){}if(p==='admin')try{renderAdm();}catch(e){}if(p==='board')try{renderBoard();}catch(e){}
 }
 function toggleTheme(){S.theme=S.theme==='dark'?'light':'dark';document.body.classList.toggle('light',S.theme==='light');document.getElementById('thBtn').textContent=S.theme==='light'?'🌙':'☀️';save();}
@@ -548,7 +550,7 @@ async function ensureAdminPwH(){
   Object.values(S.users).forEach(u=>{if(!u.pwH){u.pwH=defH;changed=true;}});
   if(changed){
     // Save to localStorage only (not Firebase) during init
-    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+    try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,ai:S.aiConfig||null,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   }
 }
 
@@ -566,7 +568,7 @@ async function doLogin(){
   document.getElementById('login-gate').style.display='none';
   document.getElementById('lg-id').value='';document.getElementById('lg-pw').value='';errEl.textContent='';
   updateAuthUI();
-  addL('로그인',acc.name+' ('+acc.role+')');try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ys:S.yearSnapshots,ay:S.activeYear,ej:S.emailjs,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
+  addL('로그인',acc.name+' ('+acc.role+')');try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ys:S.yearSnapshots,ay:S.activeYear,ej:S.emailjs,ai:S.aiConfig,t:Date.now()};localStorage.setItem(LS,JSON.stringify(d));}catch(e){}
   startFBListener();
   startPresence();
   initYearSelector();updateYearBadge();
@@ -613,8 +615,8 @@ function showLoading(){const b=document.getElementById('loading-bar');if(b){b.st
 function hideLoading(){const b=document.getElementById('loading-bar');if(b){b.style.width='100%';setTimeout(()=>{b.style.opacity='0';setTimeout(()=>{b.style.width='0';b.style.opacity='1';},300);},200);}}
 function showLoading(){document.getElementById('loading-bar').style.display='block';}
 function hideLoading(){document.getElementById('loading-bar').style.display='none';}
-function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
-function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ys)S.yearSnapshots=d.ys;if(d.ay)S.activeYear=Number(d.ay)||2026;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
+function save(){try{const d={act:S.act||{},ascr:S.ascr||{},SL:SL||{},apw:S.adminPwH||'',opw:S.orgPw||{},th:S.theme||'light',kpi:S.kpi||{},log:(S.log||[]).slice(-500),users:S.users||{},oo:S.orgOrder||[],ann:S.announcement||'',wg:S.widgets||[],yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:(S.piCategories&&S.piCategories.length)?S.piCategories:null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,ai:S.aiConfig||null,t:Date.now()};const j=JSON.stringify(d);if(j.length>4500000)toast('용량 경고','w');try{localStorage.setItem(LS,j);}catch(le){console.error('localStorage error:',le);}saveToFirebase();}catch(e){console.error('save error:',e);}}
+function load(){try{const r=localStorage.getItem(LS);if(!r)return false;const d=JSON.parse(r);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.apw)S.adminPwH=d.apw;if(d.opw)S.orgPw=d.opw;if(d.th)S.theme=d.th;if(d.log)S.log=d.log;if(d.users)S.users=d.users;if(d.oo)S.orgOrder=d.oo;if(d.ann)S.announcement=d.ann;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic&&Array.isArray(d.pic)&&d.pic.length)S.piCategories=d.pic;else if(d.pic&&!Array.isArray(d.pic)&&typeof d.pic==='object'){const ks=Object.keys(d.pic);if(ks.every(k=>/^\d+$/.test(k)))S.piCategories=ks.sort((a,b)=>+a-+b).map(k=>d.pic[k]);}if(d.ej)S.emailjs=d.ej;if(d.ai)S.aiConfig=d.ai;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ys)S.yearSnapshots=d.ys;if(d.ay)S.activeYear=Number(d.ay)||2026;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.wg){const saved=d.wg;const savedIds=new Set(saved.map(w=>w.id));const defaults=S.widgets;saved.forEach((w,i)=>{if(w.size==='full')w.size='100';if(w.size==='half')w.size='50';if(w.row==null)w.row=i;});const merged=[...saved];defaults.forEach(dw=>{if(!savedIds.has(dw.id))merged.push(dw);});S.widgets=merged;}if(d.kpi&&Object.keys(d.kpi).length){
     // Fix Firebase array-to-object conversion in nested structures
     Object.values(d.kpi).forEach(gr=>{if(!gr?.units)return;Object.values(gr.units).forEach(un=>{if(!un)return;if(un.sections&&!Array.isArray(un.sections)){const ks=Object.keys(un.sections);if(ks.every(k=>/^\d+$/.test(k)))un.sections=ks.sort((a,b)=>+a-+b).map(k=>un.sections[k]);else un.sections=[];}if(!Array.isArray(un.sections))un.sections=[];un.sections.forEach(sec=>{if(sec.items&&!Array.isArray(sec.items)){const ks=Object.keys(sec.items);if(ks.every(k=>/^\d+$/.test(k)))sec.items=ks.sort((a,b)=>+a-+b).map(k=>sec.items[k]);else sec.items=[];}if(!Array.isArray(sec.items))sec.items=[];});});});
     Object.assign(S.kpi,d.kpi);return true;}return false;}catch(e){return false;}}
@@ -623,7 +625,7 @@ function closeSet(){}
 function chgPw(){}
 function clearAll(){if(!confirm('⚠️ 전체 초기화\n\n모든 KPI 지표, 실적, 사용자 계정, 코멘트, 태그, 이력이 삭제됩니다.\nFirebase 데이터도 함께 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?'))return;if(!confirm('정말로 전체 초기화를 진행하시겠습니까?'))return;try{if(_fbRef){_fbRef.off();}localStorage.removeItem(LS);if(_fbReady&&_fbRef){_fbRef.remove().then(()=>{location.reload();}).catch(()=>{location.reload();});}else{location.reload();}}catch(e){console.error('clearAll error:',e);localStorage.removeItem(LS);location.reload();}}
 function exportAll(){const d={act:S.act,ascr:S.ascr,SL,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly||{},dl:S.deadlines||{},cm:S.comments||{},tg:S.tags||{},ap:S.approval||{},ar:S.autoRefresh||0,al:S.alerts||[],pi:S.piPool||{},pic:S.piCategories||null,piw:S.piWeights||null,pil:S.piIndexLabels||null,co:S.corpOrg||null,bd:S.board||[],ys:S.yearSnapshots||{},ay:S.activeYear||2026,ej:S.emailjs||null,v:'v4'};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='KPI_'+S.activeYear+'_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('백업 완료','s');}
-function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.kpi)Object.assign(S.kpi,d.kpi);if(d.users)Object.assign(S.users,d.users);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ys)S.yearSnapshots=d.ys;if(d.ay)S.activeYear=Number(d.ay)||2026;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.ej)S.emailjs=d.ej;save();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
+function importAll(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.act)Object.assign(S.act,d.act);if(d.ascr)Object.assign(S.ascr,d.ascr);if(d.SL)Object.assign(SL,d.SL);if(d.kpi)Object.assign(S.kpi,d.kpi);if(d.users)Object.assign(S.users,d.users);if(d.log)S.log=[...S.log,...d.log];if(d.wg)S.widgets=d.wg;if(d.ann)S.announcement=d.ann;if(d.oo)S.orgOrder=d.oo;if(d.yr)S.yearly=d.yr;if(d.dl)S.deadlines=d.dl;if(d.cm)S.comments=d.cm;if(d.tg)S.tags=d.tg;if(d.ap)S.approval=d.ap;if(d.ar!=null)S.autoRefresh=d.ar;if(d.al)S.alerts=d.al;if(d.pi)S.piPool=d.pi;if(d.pic)S.piCategories=d.pic;if(d.piw)S.piWeights=d.piw;if(d.pil)S.piIndexLabels=d.pil;if(d.co)S.corpOrg=d.co;if(d.ys)S.yearSnapshots=d.ys;if(d.ay)S.activeYear=Number(d.ay)||2026;if(d.bd)S.board=Array.isArray(d.bd)?d.bd:[];if(d.ej)S.emailjs=d.ej;if(d.ai)S.aiConfig=d.ai;save();renderAll();toast('가져오기 완료','s');}catch(err){toast('오류: '+err.message,'e');}};r.readAsText(f);inp.value='';}
 function renderAll(){try{renderNav();}catch(e){console.warn('renderNav:',e);}try{renderKPI();}catch(e){console.warn('renderKPI:',e);}try{renderDash();}catch(e){console.warn('renderDash:',e);}try{renderAnn();}catch(e){console.warn('renderAnn:',e);}}
 
 // ══════════════════════════════════════════════════════════════
@@ -1061,14 +1063,73 @@ function wTotal(has){
       items.push({name:it.name,pts:it.pts,target:it.target,ac,s,p,scol,g,u,si,ii});
     });
   });
+
+  // Year comparison data from yearSnapshots
+  const yearData=[2024,2025,2026].map(yr=>{
+    if(yr===S.activeYear){
+      return{year:yr,tsc,tmx,tp};
+    }
+    const snap=S.yearSnapshots?.[yr];
+    if(!snap||!snap.kpi?.[g]?.units?.[u])return{year:yr,tsc:null,tmx:null,tp:null};
+    // Compute from snapshot
+    const sKpi=snap.kpi;const sAct=snap.act||{};const sSL=snap.SL||{};
+    const sUnit=sKpi[g].units[u];
+    if(!sUnit||!sUnit.sections)return{year:yr,tsc:null,tmx:null,tp:null};
+    let ytsc=0,ytmx=0,any=false;
+    sUnit.sections.forEach((sec,si)=>{
+      (sec.items||[]).forEach((it,ii)=>{
+        ytmx+=it.pts||0;
+        const k=g+'|'+u+'|'+si+'|'+ii;const ac=sAct[k]||'';
+        if(ac.trim()){
+          const lk=g+'__'+u+'__'+si+'__'+ii;
+          const sc=cFS(it.pts,ac,sSL[lk],it.direction);
+          if(sc!=null){ytsc+=sc;any=true;}
+        }
+      });
+    });
+    return{year:yr,tsc:any?Math.round(ytsc*10)/10:null,tmx:ytmx,tp:any&&ytmx?Math.round(ytsc/ytmx*100):null};
+  });
+
+  const yearTable=`<table style="width:100%;border-collapse:collapse;font-size:10px"><thead><tr style="border-bottom:1px solid var(--bd)"><th style="padding:5px 6px;text-align:left;color:var(--t3);font-weight:600">연도</th><th style="padding:5px 6px;text-align:right;color:var(--t3);font-weight:600">만점</th><th style="padding:5px 6px;text-align:right;color:var(--t3);font-weight:600">실적</th><th style="padding:5px 6px;text-align:right;color:var(--t3);font-weight:600">달성률</th></tr></thead><tbody>${yearData.map((d,i)=>{
+    const yrColors={2024:'#94a3b8',2025:'#06b6d4',2026:'#f59e0b'};
+    const col=yrColors[d.year]||'var(--t3)';
+    const rateCol=d.tp==null?'var(--t3)':d.tp>=100?'var(--green)':d.tp>=90?'var(--blue)':d.tp>=70?'var(--amber)':'var(--red)';
+    const border=i<yearData.length-1?'border-bottom:1px solid rgba(100,120,180,.08)':'';
+    const isActive=d.year===S.activeYear;
+    return`<tr style="${border}${isActive?';background:rgba(96,165,250,.05)':''}"><td style="padding:6px 6px;font-weight:${isActive?'800':'700'};color:${col}">'${String(d.year).slice(2)}년${isActive?' <span style="font-size:8px;color:var(--blue)">●</span>':''}</td><td style="padding:6px 6px;text-align:right;color:var(--t2);font-family:'JetBrains Mono',monospace">${d.tmx||'—'}</td><td style="padding:6px 6px;text-align:right;font-weight:700;color:${col};font-family:'JetBrains Mono',monospace">${d.tsc!=null?d.tsc:'<span style="color:var(--t3)">—</span>'}</td><td style="padding:6px 6px;text-align:right;font-weight:800;color:${rateCol};font-family:'JetBrains Mono',monospace">${d.tp!=null?d.tp+'%':'—'}</td></tr>`;
+  }).join('')}</tbody></table>`;
+
+  // Donut chart as SVG (activeYear)
+  const pct=tp!=null?Math.min(tp,120):0;
+  const radius=52;const circum=2*Math.PI*radius;
+  const capped=Math.min(pct/100,1);
+  const dashOffset=circum*(1-capped);
+  const donutColor=pct>=100?'#10b981':pct>=90?'#3b82f6':pct>=70?'#f59e0b':'#ef4444';
+  const donutSvg=`<svg width="140" height="140" viewBox="0 0 140 140" style="flex-shrink:0">
+    <circle cx="70" cy="70" r="${radius}" fill="none" stroke="rgba(100,120,180,.15)" stroke-width="10"/>
+    <circle cx="70" cy="70" r="${radius}" fill="none" stroke="${donutColor}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circum}" stroke-dashoffset="${dashOffset}" transform="rotate(-90 70 70)" style="transition:stroke-dashoffset .6s ease"/>
+    <text x="70" y="68" text-anchor="middle" font-size="22" font-weight="900" fill="${donutColor}" font-family="'JetBrains Mono',monospace">${tp!=null?tp+'%':'—'}</text>
+    <text x="70" y="85" text-anchor="middle" font-size="9" fill="var(--t3)" font-weight="600" letter-spacing="0.5">달성률</text>
+  </svg>`;
+
+  // Individual KPI cards (bar charts)
   const cards=items.map(it=>{
     const col=SC(it.p);
     const pbar=it.p!=null?it.p:0;
     const yk=yrKey(it.g,it.u,it.si,it.ii);
     const hasYr=S.yearly[yk]&&S.yearly[yk].rows&&S.yearly[yk].rows.length>0;
-    return`<div style="background:var(--sec);border:1px solid var(--bd);border-radius:7px;padding:8px 10px;min-width:0;display:flex;flex-direction:column;gap:4px;border-left:3px solid ${it.scol};cursor:pointer;transition:border-color .15s" onclick="openYR('${E(it.g)}','${E(it.u)}',${it.si},${it.ii})" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--bd)'"><div style="display:flex;align-items:center;gap:4px"><div style="font-size:10px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${E(it.name)}">${E(it.name)}</div>${hasYr?'<span style="font-size:8px;color:var(--cyan)">📅</span>':''}<span style="font-size:9px;color:var(--t3);flex-shrink:0">${it.pts}점</span></div><div style="display:flex;align-items:center;gap:6px"><span style="font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${col};line-height:1">${it.p!=null?it.p+'%':'—'}</span><span style="font-size:9px;color:var(--t3)">${it.ac||'미입력'}</span></div><div style="height:3px;background:var(--bd);border-radius:2px;overflow:hidden"><div style="width:${Math.min(pbar,100)}%;height:100%;background:${col};border-radius:2px"></div></div></div>`;
+    return`<div style="background:linear-gradient(145deg,var(--card),var(--card2));border:1px solid var(--bd);border-radius:7px;padding:8px 10px;min-width:0;display:flex;flex-direction:column;gap:4px;border-left:3px solid ${it.scol};cursor:pointer;transition:border-color .15s" onclick="openYR('${E(it.g)}','${E(it.u)}',${it.si},${it.ii})" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--bd)'"><div style="display:flex;align-items:center;gap:4px"><div style="font-size:10px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${E(it.name)}">${E(it.name)}</div>${hasYr?'<span style="font-size:8px;color:var(--cyan)">📅</span>':''}<span style="font-size:9px;color:var(--t3);flex-shrink:0">${it.pts}점</span></div><div style="display:flex;align-items:center;gap:6px"><span style="font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${col};line-height:1">${it.p!=null?it.p+'%':'—'}</span><span style="font-size:9px;color:var(--t3)">${it.ac||'미입력'}</span></div><div style="height:3px;background:var(--bd);border-radius:2px;overflow:hidden"><div style="width:${Math.min(pbar,100)}%;height:100%;background:${col};border-radius:2px"></div></div></div>`;
   }).join('');
-  return`<div class="card"><div class="card-h clk" onclick="togDB('total')"><div class="dot dot-f"></div><div class="card-t">전사 KPI 종합</div><span style="margin-left:8px;font-size:13px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${tp!=null?SC(tp):'var(--t3)'}">${tsc!=null?tsc+'/'+tmx+'점':'—'}</span>${tp!=null?`<span style="font-size:11px;font-weight:800;color:${SC(tp)};margin-left:4px">${tp}%</span>`:''}<span style="font-size:9px;color:var(--t3);margin-left:6px">${filled}/${total}개 입력</span><span class="chv up" id="dbi-total">▼</span></div><div class="card-b" id="dbb-total"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">${cards}</div></div></div>`;
+
+  // Compose: donut + year table side-by-side, then individual cards
+  return`<div class="card"><div class="card-h clk" onclick="togDB('total')"><div class="dot dot-f"></div><div class="card-t">전사 KPI 종합</div><span style="margin-left:8px;font-size:13px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${tp!=null?SC(tp):'var(--t3)'}">${tsc!=null?tsc+'/'+tmx+'점':'—'}</span>${tp!=null?`<span style="font-size:11px;font-weight:800;color:${SC(tp)};margin-left:4px">${tp}%</span>`:''}<span style="font-size:9px;color:var(--t3);margin-left:6px">${filled}/${total}개 입력</span><span class="chv up" id="dbi-total">▼</span></div><div class="card-b" id="dbb-total">
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;padding:8px 4px 14px;border-bottom:1px solid var(--bd);margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:center">${donutSvg}</div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">연도별 실적 비교</div>${yearTable}</div>
+    </div>
+    <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">📊 지표별 진도율</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">${cards}</div>
+  </div></div>`;
 }
 
 function wCorpChart(has){const vo=visibleOrgs();const cGk=getCorpOrg();if(!cGk)return'';if(!vo.includes(cGk))return'';const g=cGk,u=g?Object.keys(S.kpi[g]?.units||{})[0]:null;if(!has||!g||!u)return`<div class="card"><div class="card-h clk" onclick="togDB('corp')"><div class="dot dot-f"></div><div class="card-t">전사 KPI</div><span class="chv" id="dbi-corp"></span></div><div class="card-b" id="dbb-corp"><div style="padding:16px;color:var(--t3);font-size:11px">데이터 업로드 필요</div></div></div>`;const items=[];S.kpi[g].units[u].sections.forEach((s,si)=>s.items.forEach((it,ii)=>{const sc=isc(g,u,si,ii);items.push({name:it.name,pts:it.pts,score:sc,pct:sc!=null?Math.round(sc/it.pts*100):null,sec:s.name});}));return`<div class="card"><div class="card-h clk" onclick="togDB('corp')"><div class="dot dot-f"></div><div class="card-t">전사 KPI</div><div style="margin-left:auto;display:flex;gap:7px;align-items:center"><div class="leg"><div style="width:8px;height:6px;border:1.5px dashed rgba(100,140,220,.45);border-radius:2px"></div>SUPEX</div><div class="leg"><div style="width:8px;height:6px;background:var(--blue);opacity:.8;border-radius:2px"></div>실적</div></div><span class="chv" id="dbi-corp"></span></div><div class="card-b" id="dbb-corp" style="overflow-x:auto;display:flex;align-items:flex-end;min-height:170px">${buildChart(items)}</div></div>`;}
@@ -1633,6 +1694,539 @@ function doBulkAddPI(g){
 
 // ── PASSWORD CHANGE (all users) ──
 // ── BOARD (Public) ──
+
+
+// ══ AI_REPORT.JS — AI-powered PI extraction from reports ══
+
+// Global state for AI analyzer
+let _aiExtractResult=null;
+
+function openAIReportAnalyzer(){
+  if(!S.aiConfig?.apiKey){
+    if(S.isAdmin){
+      openAIConfigModal();
+      return;
+    }else{
+      toast('관리자가 AI 분석 기능을 설정해야 합니다','e');
+      return;
+    }
+  }
+
+  const m=document.createElement('div');m.className='modal';m.id='ai-rpt-m';m.style.display='flex';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="mbox" style="max-width:860px;width:92vw;max-height:92vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+      <div><span style="font-size:16px;font-weight:800">🤖 AI 보고서 분석</span>
+        <div style="font-size:10px;color:var(--t3);margin-top:2px">보고서를 업로드하여 PI를 자동 추출하고 Scoring 합니다</div></div>
+      <button class="btn" onclick="document.getElementById('ai-rpt-m').remove()">✕</button>
+    </div>
+    <div id="ai-step1" style="flex:1;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--t2)">STEP 1</div>
+        <div style="flex:1;height:2px;background:linear-gradient(90deg,var(--blue),var(--bd))"></div>
+        <div style="font-size:11px;color:var(--t3)">보고서 입력</div>
+      </div>
+      <div id="ai-drop" style="border:2px dashed var(--bd2);border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:.15s;margin-bottom:12px;background:linear-gradient(135deg,var(--card),var(--card2))"
+        onclick="document.getElementById('ai-file').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='rgba(96,165,250,.05)'"
+        ondragleave="this.style.borderColor='var(--bd2)';this.style.background='linear-gradient(135deg,var(--card),var(--card2))'"
+        ondrop="event.preventDefault();this.style.borderColor='var(--bd2)';this.style.background='linear-gradient(135deg,var(--card),var(--card2))';handleAIFile(event.dataTransfer.files[0])">
+        <div style="font-size:36px;margin-bottom:8px">📄</div>
+        <div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:4px">보고서 파일을 드래그하거나 클릭하여 선택</div>
+        <div style="font-size:10px;color:var(--t3)">지원 형식: PDF, Word(.docx), 텍스트(.txt, .md)</div>
+        <input type="file" id="ai-file" accept=".pdf,.docx,.txt,.md" style="display:none" onchange="handleAIFile(this.files[0])"/>
+      </div>
+      <div style="text-align:center;font-size:10px;color:var(--t3);margin-bottom:8px">또는 텍스트 직접 입력</div>
+      <textarea id="ai-text" placeholder="보고서 내용을 여기에 붙여넣으세요..." style="width:100%;min-height:180px;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--t1);font-family:inherit;font-size:11px;resize:vertical"></textarea>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+        <button class="btn" onclick="document.getElementById('ai-rpt-m').remove()">취소</button>
+        <button class="btn btn-p" onclick="runAIAnalysis()" id="ai-run-btn">🚀 분석 시작</button>
+      </div>
+    </div>
+    <div id="ai-step2" style="display:none;flex:1;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--blue)">STEP 2</div>
+        <div style="flex:1;height:2px;background:linear-gradient(90deg,var(--blue),var(--bd))"></div>
+        <div style="font-size:11px;color:var(--t3)">AI 분석 중...</div>
+      </div>
+      <div style="text-align:center;padding:50px 20px">
+        <div id="ai-loading-icon" style="font-size:50px;margin-bottom:14px;animation:spin 2s linear infinite">🤖</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px">Claude가 보고서를 분석하고 있습니다</div>
+        <div style="font-size:11px;color:var(--t3)" id="ai-progress-msg">보고서 내용 파싱 중...</div>
+      </div>
+    </div>
+    <div id="ai-step3" style="display:none;flex:1;overflow-y:auto"></div>
+  </div>`;
+  document.body.appendChild(m);
+  if(!document.getElementById('ai-spin-style')){
+    const s=document.createElement('style');s.id='ai-spin-style';
+    s.textContent='@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';
+    document.head.appendChild(s);
+  }
+}
+
+function handleAIFile(file){
+  if(!file)return;
+  const textarea=document.getElementById('ai-text');
+  const dropZone=document.getElementById('ai-drop');
+  dropZone.innerHTML='<div style="font-size:24px;margin-bottom:6px">⏳</div><div style="font-size:11px;color:var(--t2)">파일 읽는 중: '+E(file.name)+'</div>';
+  
+  const ext=file.name.toLowerCase().split('.').pop();
+  const reader=new FileReader();
+  
+  if(ext==='txt'||ext==='md'){
+    reader.onload=e=>{textarea.value=e.target.result;showFileLoaded(file.name,e.target.result.length);};
+    reader.readAsText(file,'UTF-8');
+  }else if(ext==='pdf'){
+    reader.onload=async e=>{
+      try{
+        const text=await extractPDFText(e.target.result);
+        textarea.value=text;
+        showFileLoaded(file.name,text.length);
+      }catch(err){
+        toast('PDF 파싱 실패: '+err.message,'e');
+        resetAIDropZone();
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }else if(ext==='docx'){
+    reader.onload=async e=>{
+      try{
+        const text=await extractDocxText(e.target.result);
+        textarea.value=text;
+        showFileLoaded(file.name,text.length);
+      }catch(err){
+        toast('Word 파싱 실패: '+err.message,'e');
+        resetAIDropZone();
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }else{
+    toast('지원하지 않는 파일 형식','e');
+    resetAIDropZone();
+  }
+}
+
+function showFileLoaded(name,chars){
+  const dropZone=document.getElementById('ai-drop');
+  dropZone.innerHTML='<div style="font-size:30px;margin-bottom:6px">✅</div><div style="font-size:12px;font-weight:700;color:var(--green)">파일 로드 완료</div><div style="font-size:10px;color:var(--t3);margin-top:3px">'+E(name)+' · '+chars.toLocaleString()+'자</div>';
+}
+
+function resetAIDropZone(){
+  const dropZone=document.getElementById('ai-drop');
+  dropZone.innerHTML='<div style="font-size:36px;margin-bottom:8px">📄</div><div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:4px">보고서 파일을 드래그하거나 클릭하여 선택</div><div style="font-size:10px;color:var(--t3)">지원 형식: PDF, Word(.docx), 텍스트(.txt, .md)</div><input type="file" id="ai-file" accept=".pdf,.docx,.txt,.md" style="display:none" onchange="handleAIFile(this.files[0])"/>';
+}
+
+async function extractPDFText(arrayBuffer){
+  if(typeof pdfjsLib==='undefined'){
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+  let text='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    text+=content.items.map(it=>it.str).join(' ')+'\n\n';
+  }
+  return text;
+}
+
+async function extractDocxText(arrayBuffer){
+  if(typeof mammoth==='undefined'){
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+  }
+  const result=await mammoth.extractRawText({arrayBuffer});
+  return result.value;
+}
+
+function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement('script');s.src=src;
+    s.onload=resolve;s.onerror=reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function runAIAnalysis(){
+  const text=document.getElementById('ai-text').value.trim();
+  if(!text){toast('보고서 내용을 입력해주세요','e');return;}
+  if(text.length<100){toast('보고서가 너무 짧습니다 (최소 100자)','e');return;}
+  if(!S.aiConfig?.apiKey){toast('API Key가 설정되지 않았습니다','e');return;}
+
+  document.getElementById('ai-step1').style.display='none';
+  document.getElementById('ai-step2').style.display='block';
+  updateProgress('프롬프트 구성 중...');
+
+  // Collect existing PIs from current org
+  const existingPIs=[];
+  const orgLabel=S.kpi[S.piOrg]?.label||S.piOrg||'전체';
+  Object.entries(S.piPool||{}).forEach(([g,list])=>{
+    if(!Array.isArray(list))return;
+    list.forEach(pi=>{
+      existingPIs.push({
+        id:pi.id,org:g,name:pi.name,category:pi.category,unit:pi.unit,scores:pi.scores||{}
+      });
+    });
+  });
+
+  const existingNames=existingPIs.map(p=>p.name);
+  
+  const prompt=`당신은 SK브로드밴드 경영분석 전문가입니다. 아래 보고서를 분석하여 성과지수(Performance Index, PI)를 추출하고 평가해주세요.
+
+===== 보고서 =====
+${text.slice(0,12000)}${text.length>12000?'\n\n[...이하 생략: 총 '+text.length+'자]':''}
+===== 보고서 끝 =====
+
+===== 기존 등록된 PI 목록 (${existingNames.length}개) =====
+${existingNames.length?existingNames.map((n,i)=>(i+1)+'. '+n).join('\n'):'(없음)'}
+
+===== 평가 기준 (6개 지수, 각 1-5점) =====
+1. strategic (전략적 중요도): 회사 전략 방향과의 정합성
+2. measurable (측정가능성): 정량적으로 측정 가능한 정도
+3. dataAvail (데이터가용성): 데이터 수집/확보 용이성
+4. manageEase (관리용이성): 주기적 트래킹/관리 부담
+5. impact (영향도): 비즈니스 성과에 미치는 영향
+6. actionable (실행가능성): 개선 행동으로 연결 가능성
+
+===== 작업 =====
+1. 보고서에서 **새로 추출할 PI 후보**를 최대 8개까지 식별
+2. 기존 PI 중 보고서에서 언급되거나 관련된 것들의 **Scoring 업데이트** 제안
+
+===== 응답 형식 =====
+반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트 없이 JSON만 출력:
+
+{
+  "summary": "보고서 핵심 내용 2-3문장 요약",
+  "extracted": [
+    {
+      "name": "지표명 (간결하게, 예: 5G 가입자 수)",
+      "category": "재무|전략|고객|프로세스|ESG|기타 중 하나",
+      "unit": "측정 단위 (예: %, 명, 억원)",
+      "rationale": "추출 근거 (1-2문장)",
+      "scores": {"strategic":4,"measurable":5,"dataAvail":4,"manageEase":3,"impact":5,"actionable":4},
+      "evidence": "보고서에서 인용한 구체적 문장 (30자 이내)"
+    }
+  ],
+  "matched": [
+    {
+      "existingName": "기존 PI명 (위 목록에서 정확히 일치)",
+      "updatedScores": {"strategic":5,"impact":5},
+      "reason": "점수 변경 근거 1문장"
+    }
+  ]
+}
+
+추출 원칙:
+- 너무 광범위하거나 추상적인 지표는 피하세요
+- 반드시 보고서에 근거가 있어야 합니다
+- 기존 PI와 중복되는 것은 extracted가 아닌 matched에 포함
+- 점수는 보수적으로, 보고서에서 근거가 명확한 경우에만 높은 점수 부여`;
+
+  try{
+    updateProgress('Claude API 호출 중...');
+    const response=await callClaudeAPI(prompt);
+    updateProgress('결과 파싱 중...');
+    const result=parseAIResponse(response);
+    _aiExtractResult=result;
+    updateProgress('완료!');
+    setTimeout(()=>showAIResults(result),500);
+  }catch(err){
+    console.error('AI analysis error:',err);
+    toast('분석 실패: '+(err.message||err).slice(0,80),'e');
+    document.getElementById('ai-step1').style.display='block';
+    document.getElementById('ai-step2').style.display='none';
+  }
+}
+
+function updateProgress(msg){
+  const el=document.getElementById('ai-progress-msg');
+  if(el)el.textContent=msg;
+}
+
+async function callClaudeAPI(prompt){
+  const apiKey=S.aiConfig.apiKey;
+  const model=S.aiConfig.model||'claude-sonnet-4-20250514';
+  const response=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model,
+      max_tokens:4000,
+      messages:[{role:'user',content:prompt}]
+    })
+  });
+  if(!response.ok){
+    const err=await response.text();
+    throw new Error('API 오류 ('+response.status+'): '+err.slice(0,200));
+  }
+  const data=await response.json();
+  return data.content.map(c=>c.type==='text'?c.text:'').join('');
+}
+
+function parseAIResponse(text){
+  // Remove markdown code fences if present
+  let clean=text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+  // Extract first JSON object
+  const jsonStart=clean.indexOf('{');
+  const jsonEnd=clean.lastIndexOf('}');
+  if(jsonStart<0||jsonEnd<0)throw new Error('JSON 응답을 찾을 수 없습니다');
+  clean=clean.slice(jsonStart,jsonEnd+1);
+  try{
+    return JSON.parse(clean);
+  }catch(e){
+    throw new Error('JSON 파싱 오류: '+e.message);
+  }
+}
+
+function showAIResults(result){
+  const step2=document.getElementById('ai-step2');
+  const step3=document.getElementById('ai-step3');
+  step2.style.display='none';
+  step3.style.display='block';
+
+  const extracted=result.extracted||[];
+  const matched=result.matched||[];
+
+  let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:700;color:var(--green)">STEP 3</div>
+    <div style="flex:1;height:2px;background:linear-gradient(90deg,var(--green),var(--bd))"></div>
+    <div style="font-size:11px;color:var(--t3)">결과 검토 및 반영</div>
+  </div>`;
+
+  if(result.summary){
+    html+=`<div style="background:linear-gradient(135deg,rgba(96,165,250,.08),rgba(34,211,238,.04));border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:4px">📝 보고서 요약</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.5">${E(result.summary)}</div>
+    </div>`;
+  }
+
+  // Tabs
+  html+=`<div style="display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--bd);padding-bottom:6px">
+    <button class="ai-tab on" data-tab="ext" onclick="switchAITab('ext')" style="padding:5px 12px;border-radius:6px;border:1px solid var(--blue);background:linear-gradient(135deg,rgba(96,165,250,.15),rgba(59,130,246,.08));color:var(--blue);font-size:11px;font-weight:700;cursor:pointer">🆕 신규 추출 (${extracted.length})</button>
+    <button class="ai-tab" data-tab="mat" onclick="switchAITab('mat')" style="padding:5px 12px;border-radius:6px;border:1px solid var(--bd);background:var(--sec);color:var(--t2);font-size:11px;font-weight:700;cursor:pointer">🔄 기존 매칭 (${matched.length})</button>
+  </div>`;
+
+  // Extracted tab
+  html+=`<div id="ai-tab-ext" class="ai-tab-content">`;
+  if(!extracted.length){
+    html+=`<div style="text-align:center;padding:30px;color:var(--t3);font-size:11px">추출된 신규 PI가 없습니다</div>`;
+  }else{
+    // Target org selector
+    const allOrgs=ordKeys().filter(og=>canEdit(og));
+    html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:var(--sec);border-radius:6px">
+      <span style="font-size:10px;color:var(--t3)">등록 대상 조직:</span>
+      <select id="ai-target-org" class="sinp" style="font-size:11px;padding:3px 8px;flex:1;max-width:200px">
+        ${allOrgs.map(og=>`<option value="${E(og)}"${og===S.piOrg?' selected':''}>${E(S.kpi[og]?.label||og)}</option>`).join('')}
+      </select>
+      <button class="btn" style="font-size:10px" onclick="aiCheckAll(true)">✓ 전체 선택</button>
+      <button class="btn" style="font-size:10px" onclick="aiCheckAll(false)">전체 해제</button>
+    </div>`;
+    extracted.forEach((item,idx)=>{
+      const catColors={재무:'#3b82f6',전략:'#10b981',고객:'#8b5cf6',프로세스:'#f59e0b',ESG:'#06b6d4',기타:'#64748b'};
+      const cc=catColors[item.category]||'#64748b';
+      const scores=item.scores||{};
+      const total=Object.values(scores).reduce((a,v)=>a+(v||0),0);
+      html+=`<div style="background:linear-gradient(145deg,var(--card),var(--card2));border:1px solid var(--bd);border-radius:10px;padding:12px 14px;margin-bottom:8px;position:relative">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <input type="checkbox" id="ai-ext-${idx}" checked style="margin-top:3px;cursor:pointer;accent-color:var(--blue)"/>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <span style="font-size:13px;font-weight:800">${E(item.name)}</span>
+              <span style="font-size:8px;padding:1px 6px;border-radius:4px;background:${cc}18;color:${cc};font-weight:700">${E(item.category||'기타')}</span>
+              ${item.unit?`<span style="font-size:9px;color:var(--t3)">${E(item.unit)}</span>`:''}
+            </div>
+            <div style="font-size:10px;color:var(--t2);margin-bottom:6px;line-height:1.4">💡 ${E(item.rationale||'')}</div>
+            ${item.evidence?`<div style="font-size:9px;color:var(--t3);font-style:italic;padding:3px 8px;background:var(--sec);border-left:2px solid ${cc};border-radius:3px;margin-bottom:8px">"${E(item.evidence)}"</div>`:''}
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">
+              ${['strategic','measurable','dataAvail','manageEase','impact','actionable'].map(k=>{
+                const labels={strategic:'전략',measurable:'측정',dataAvail:'데이터',manageEase:'관리',impact:'영향',actionable:'실행'};
+                const v=scores[k]||0;
+                const clr=v>=4?'var(--green)':v>=3?'var(--amber)':'var(--red)';
+                return `<div style="display:flex;align-items:center;gap:2px;padding:2px 6px;border-radius:4px;border:1px solid var(--bd);background:var(--sec)">
+                  <span style="font-size:8px;color:var(--t3)">${labels[k]}</span>
+                  <span style="font-size:10px;font-weight:800;color:${clr};font-family:'JetBrains Mono',monospace">${v}</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div style="text-align:center;flex-shrink:0;padding-left:8px;border-left:1px solid var(--bd)">
+            <div style="font-size:18px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${total>=24?'var(--green)':total>=18?'var(--amber)':'var(--red)'}">${total}</div>
+            <div style="font-size:7px;color:var(--t3)">합계/30</div>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  html+=`</div>`;
+
+  // Matched tab
+  html+=`<div id="ai-tab-mat" class="ai-tab-content" style="display:none">`;
+  if(!matched.length){
+    html+=`<div style="text-align:center;padding:30px;color:var(--t3);font-size:11px">매칭된 기존 PI가 없습니다</div>`;
+  }else{
+    matched.forEach((item,idx)=>{
+      const scoreChanges=Object.entries(item.updatedScores||{}).map(([k,v])=>{
+        const labels={strategic:'전략',measurable:'측정',dataAvail:'데이터',manageEase:'관리',impact:'영향',actionable:'실행'};
+        return `<span style="padding:2px 6px;border-radius:4px;background:rgba(96,165,250,.12);color:var(--blue);font-size:9px;font-weight:700">${labels[k]||k}: ${v}</span>`;
+      }).join(' ');
+      html+=`<div style="background:linear-gradient(145deg,var(--card),var(--card2));border:1px solid var(--bd);border-radius:10px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <input type="checkbox" id="ai-mat-${idx}" checked style="margin-top:3px;cursor:pointer;accent-color:var(--blue)"/>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:800;margin-bottom:4px">🔄 ${E(item.existingName)}</div>
+            <div style="font-size:10px;color:var(--t2);margin-bottom:6px">💡 ${E(item.reason||'')}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">${scoreChanges}</div>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  html+=`</div>`;
+
+  // Actions
+  html+=`<div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">
+    <button class="btn" onclick="resetAIAnalysis()">← 새로 분석</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn" onclick="document.getElementById('ai-rpt-m').remove()">닫기</button>
+      <button class="btn btn-p" onclick="applyAIResults()">✓ 선택 항목 반영</button>
+    </div>
+  </div>`;
+
+  step3.innerHTML=html;
+}
+
+function switchAITab(tab){
+  document.querySelectorAll('.ai-tab').forEach(b=>{
+    const on=b.dataset.tab===tab;
+    b.className='ai-tab'+(on?' on':'');
+    b.style.borderColor=on?'var(--blue)':'var(--bd)';
+    b.style.background=on?'linear-gradient(135deg,rgba(96,165,250,.15),rgba(59,130,246,.08))':'var(--sec)';
+    b.style.color=on?'var(--blue)':'var(--t2)';
+  });
+  document.querySelectorAll('.ai-tab-content').forEach(c=>c.style.display='none');
+  document.getElementById('ai-tab-'+tab).style.display='block';
+}
+
+function aiCheckAll(checked){
+  document.querySelectorAll('#ai-tab-ext input[type=checkbox]').forEach(c=>c.checked=checked);
+}
+
+function resetAIAnalysis(){
+  _aiExtractResult=null;
+  document.getElementById('ai-step3').style.display='none';
+  document.getElementById('ai-step1').style.display='block';
+}
+
+function applyAIResults(){
+  if(!_aiExtractResult){toast('결과가 없습니다','e');return;}
+  const targetOrg=document.getElementById('ai-target-org')?.value||S.piOrg;
+  let newCount=0,updatedCount=0;
+
+  // Apply extracted (new PIs)
+  (_aiExtractResult.extracted||[]).forEach((item,idx)=>{
+    const cb=document.getElementById('ai-ext-'+idx);
+    if(!cb||!cb.checked)return;
+    if(!S.piPool[targetOrg])S.piPool[targetOrg]=[];
+    S.piPool[targetOrg].push({
+      id:'pi_'+Date.now()+'_'+idx,
+      name:item.name,
+      category:item.category||'기타',
+      unit:item.unit||'',
+      owner:S.curAccount?.name||'',
+      status:'등록',
+      note:'AI 추출: '+(item.rationale||'').slice(0,100),
+      scores:item.scores||{},
+      _aiExtracted:true,
+      _aiEvidence:item.evidence
+    });
+    newCount++;
+  });
+
+  // Apply matched (score updates)
+  (_aiExtractResult.matched||[]).forEach((item,idx)=>{
+    const cb=document.getElementById('ai-mat-'+idx);
+    if(!cb||!cb.checked)return;
+    Object.entries(S.piPool||{}).forEach(([g,list])=>{
+      if(!Array.isArray(list))return;
+      list.forEach(pi=>{
+        if(pi.name===item.existingName){
+          if(!pi.scores)pi.scores={};
+          Object.entries(item.updatedScores||{}).forEach(([k,v])=>{pi.scores[k]=v;});
+          updatedCount++;
+        }
+      });
+    });
+  });
+
+  addL('AI분석',newCount+'개 신규 PI 추가, '+updatedCount+'개 업데이트');
+  save();
+  document.getElementById('ai-rpt-m').remove();
+  if(S.page==='pi')renderPI();
+  toast('✅ '+newCount+'개 신규 + '+updatedCount+'개 업데이트 완료','s');
+}
+
+// ─── AI Config Modal (Admin only) ───
+function openAIConfigModal(){
+  if(!S.isAdmin){toast('관리자 권한 필요','e');return;}
+  const cfg=S.aiConfig||{};
+  const m=document.createElement('div');m.className='modal';m.id='ai-cfg-m';m.style.display='flex';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="mbox" style="max-width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+      <span style="font-size:15px;font-weight:800">🤖 AI 분석 설정</span>
+      <button class="btn" onclick="document.getElementById('ai-cfg-m').remove()">✕</button>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,191,36,.03));border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">⚠ 보안 주의</div>
+      <div style="font-size:10px;color:var(--t2);line-height:1.5">API Key는 Firebase에 저장되어 전체 사용자가 AI 기능을 사용할 수 있게 됩니다. 보안을 위해 사용량 한도가 있는 Key를 사용하세요.</div>
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:10px;color:var(--t3);display:block;margin-bottom:4px">Anthropic API Key</label>
+      <input type="password" id="ai-cfg-key" class="sinp" placeholder="sk-ant-..." value="${E(cfg.apiKey||'')}" style="font-family:'JetBrains Mono',monospace;font-size:11px"/>
+      <div style="font-size:9px;color:var(--t3);margin-top:3px">console.anthropic.com 에서 발급</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:10px;color:var(--t3);display:block;margin-bottom:4px">Model</label>
+      <select id="ai-cfg-model" class="sinp" style="font-size:11px">
+        <option value="claude-sonnet-4-20250514"${cfg.model==='claude-sonnet-4-20250514'?' selected':''}>Claude Sonnet 4 (권장, 균형)</option>
+        <option value="claude-opus-4-20250514"${cfg.model==='claude-opus-4-20250514'?' selected':''}>Claude Opus 4 (최고 품질, 비용↑)</option>
+        <option value="claude-3-5-haiku-20241022"${cfg.model==='claude-3-5-haiku-20241022'?' selected':''}>Claude Haiku 3.5 (빠름, 저비용)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-d" onclick="clearAIConfig()">🗑 API Key 삭제</button>
+      <button class="btn" onclick="document.getElementById('ai-cfg-m').remove()">취소</button>
+      <button class="btn btn-p" onclick="saveAIConfig()">저장</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function saveAIConfig(){
+  const key=document.getElementById('ai-cfg-key').value.trim();
+  const model=document.getElementById('ai-cfg-model').value;
+  if(!key){toast('API Key를 입력하세요','e');return;}
+  if(!key.startsWith('sk-ant-')){toast('올바른 Anthropic API Key가 아닙니다','e');return;}
+  S.aiConfig={apiKey:key,model,updatedBy:S.curAccount?.name||'',updatedAt:Date.now()};
+  save();
+  addL('AI설정','API Key 업데이트 ('+model+')');
+  document.getElementById('ai-cfg-m').remove();
+  toast('AI 설정 저장 완료','s');
+}
+
+function clearAIConfig(){
+  if(!confirm('API Key를 삭제하시겠습니까? 전체 사용자가 AI 기능을 사용할 수 없게 됩니다.'))return;
+  S.aiConfig=null;save();
+  addL('AI설정','API Key 삭제');
+  document.getElementById('ai-cfg-m').remove();
+  toast('API Key 삭제 완료','i');
+}
 
 
 // ══ ADMIN.JS — Admin console, reports, yearly data ══
@@ -2319,7 +2913,7 @@ function generatePPTInBrowser(sel,orgData){
 }
 function buildPPTScript(){return'';}
 
-function aSysData(el){const ds=(JSON.stringify({act:S.act,ascr:S.ascr,SL,kpi:S.kpi}).length/1024).toFixed(1);const tO=Object.keys(S.kpi).length;const tI=Object.values(S.kpi).reduce((a,g)=>a+Object.values(g.units).reduce((b,u)=>b+u.sections.reduce((c,s)=>c+s.items.length,0),0),0);const fA=Object.values(S.act).filter(v=>v&&v.trim()).length;const fbCfg=getFBConfig();el.innerHTML=`<div class="adm-s"><div class="adm-st">💾 시스템 현황</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px"><div class="chip"><div class="chip-l">용량</div><div class="chip-v" style="font-size:13px;color:var(--blue)">${ds}KB</div><div class="chip-m">/ ~4,500KB</div></div><div class="chip"><div class="chip-l">조직</div><div class="chip-v" style="font-size:13px;color:var(--green)">${tO}</div></div><div class="chip"><div class="chip-l">KPI</div><div class="chip-v" style="font-size:13px;color:var(--cyan)">${tI}</div></div><div class="chip"><div class="chip-l">실적입력</div><div class="chip-v" style="font-size:13px;color:var(--amber)">${fA}</div><div class="chip-m">/ ${tI}</div></div><div class="chip"><div class="chip-l">이력</div><div class="chip-v" style="font-size:13px;color:var(--purple)">${S.log.length}</div></div><div class="chip"><div class="chip-l">동기화</div><div class="chip-v" style="font-size:13px;color:${_fbReady?'var(--green)':'var(--t3)'}">${_fbReady?'✅':'오프라인'}</div></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-p" onclick="exportAll()">📤 JSON</button><button class="btn btn-p" onclick="exportCSV()">📊 Excel</button><button class="btn btn-p" onclick="exportLog()">📝 이력</button><button class="btn" style="border-color:var(--red);color:var(--red)" onclick="if(confirm('이력 초기화?')){S.log=[];save();toast('초기화','i');}">🗑이력초기화</button><button class="btn btn-d" onclick="clearAll()">🗑전체초기화</button></div></div><div class="adm-s"><div class="adm-st">🔥 Firebase 실시간 동기화</div><div class="adm-ss">${_fbReady?'<span style="color:var(--green);font-weight:700">연결됨</span> — '+fbCfg?.projectId:'<span style="color:var(--t3)">오프라인 모드</span> — 복수 PC 동기화를 사용하려면 Firebase를 설정하세요'}</div><div style="display:grid;gap:6px;margin-top:8px"><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">API Key</div><input class="sinp" id="sys-fb-apikey" value="${fbCfg?.apiKey||''}" placeholder="AIzaSy..."/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Database URL</div><input class="sinp" id="sys-fb-dburl" value="${fbCfg?.databaseURL||''}" placeholder="https://your-project.firebaseio.com"/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Project ID</div><input class="sinp" id="sys-fb-projid" value="${fbCfg?.projectId||''}" placeholder="your-project-id"/></div><div style="display:flex;gap:6px"><button class="btn btn-p" onclick="sysUpdateFB()">연결/업데이트</button><button class="btn" onclick="testFBConnection()">연결 테스트</button><button class="btn" onclick="copyFBShareURL()" style="border-color:var(--green);color:var(--green)">📋 공유 URL 복사</button>${_fbReady?'<button class="btn" onclick="sysDisconnectFB()">연결 해제</button>':''}</div></div></div>`;}
+function aSysData(el){const ds=(JSON.stringify({act:S.act,ascr:S.ascr,SL,kpi:S.kpi}).length/1024).toFixed(1);const tO=Object.keys(S.kpi).length;const tI=Object.values(S.kpi).reduce((a,g)=>a+Object.values(g.units).reduce((b,u)=>b+u.sections.reduce((c,s)=>c+s.items.length,0),0),0);const fA=Object.values(S.act).filter(v=>v&&v.trim()).length;const fbCfg=getFBConfig();el.innerHTML=`<div class="adm-s"><div class="adm-st">💾 시스템 현황</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px"><div class="chip"><div class="chip-l">용량</div><div class="chip-v" style="font-size:13px;color:var(--blue)">${ds}KB</div><div class="chip-m">/ ~4,500KB</div></div><div class="chip"><div class="chip-l">조직</div><div class="chip-v" style="font-size:13px;color:var(--green)">${tO}</div></div><div class="chip"><div class="chip-l">KPI</div><div class="chip-v" style="font-size:13px;color:var(--cyan)">${tI}</div></div><div class="chip"><div class="chip-l">실적입력</div><div class="chip-v" style="font-size:13px;color:var(--amber)">${fA}</div><div class="chip-m">/ ${tI}</div></div><div class="chip"><div class="chip-l">이력</div><div class="chip-v" style="font-size:13px;color:var(--purple)">${S.log.length}</div></div><div class="chip"><div class="chip-l">동기화</div><div class="chip-v" style="font-size:13px;color:${_fbReady?'var(--green)':'var(--t3)'}">${_fbReady?'✅':'오프라인'}</div></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-p" onclick="exportAll()">📤 JSON</button><button class="btn btn-p" onclick="exportCSV()">📊 Excel</button><button class="btn btn-p" onclick="exportLog()">📝 이력</button><button class="btn" style="border-color:var(--red);color:var(--red)" onclick="if(confirm('이력 초기화?')){S.log=[];save();toast('초기화','i');}">🗑이력초기화</button><button class="btn btn-d" onclick="clearAll()">🗑전체초기화</button></div></div><div class="adm-s"><div class="adm-st">🔥 Firebase 실시간 동기화</div><div class="adm-ss">${_fbReady?'<span style="color:var(--green);font-weight:700">연결됨</span> — '+fbCfg?.projectId:'<span style="color:var(--t3)">오프라인 모드</span> — 복수 PC 동기화를 사용하려면 Firebase를 설정하세요'}</div><div style="display:grid;gap:6px;margin-top:8px"><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">API Key</div><input class="sinp" id="sys-fb-apikey" value="${fbCfg?.apiKey||''}" placeholder="AIzaSy..."/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Database URL</div><input class="sinp" id="sys-fb-dburl" value="${fbCfg?.databaseURL||''}" placeholder="https://your-project.firebaseio.com"/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Project ID</div><input class="sinp" id="sys-fb-projid" value="${fbCfg?.projectId||''}" placeholder="your-project-id"/></div><div style="display:flex;gap:6px"><button class="btn btn-p" onclick="sysUpdateFB()">연결/업데이트</button><button class="btn" onclick="testFBConnection()">연결 테스트</button><button class="btn" onclick="copyFBShareURL()" style="border-color:var(--green);color:var(--green)">📋 공유 URL 복사</button>${_fbReady?'<button class="btn" onclick="sysDisconnectFB()">연결 해제</button>':''}</div></div></div><div class="adm-s"><div class="adm-st">🤖 AI 보고서 분석 설정</div><div class="adm-ss">${S.aiConfig?.apiKey?'<span style="color:var(--green);font-weight:700">설정됨</span> — 모델: '+(S.aiConfig.model||'claude-sonnet-4'):'<span style="color:var(--t3)">미설정</span> — API Key 등록 시 PI Pool에서 AI 보고서 분석 기능이 활성화됩니다'}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-p" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);border-color:#7c3aed" onclick="openAIConfigModal()">⚙ AI 설정</button>${S.aiConfig?.apiKey?'<button class="btn" onclick="openAIReportAnalyzer()">🚀 AI 분석 테스트</button>':''}</div></div>`;}
 
 // ── 10. YEARLY DATA (5개년 실적) ──
 const YR_COLS=['Y-3','Y-2','Y-1','Y','Y+1','Y+2'];
@@ -3223,7 +3817,7 @@ async function saveToFirebase(){
   if(_fbSyncing)return;
   _fbSyncing=true;showLoading();
   try{
-    const raw={act:Object.keys(S.act||{}).length?fbKeySafe(S.act):{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?fbKeySafe(SL):{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return fbKeySafe(u);})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',bd:(S.board||[]).length?S.board:[{_:0}],ys:Object.keys(S.yearSnapshots||{}).length?S.yearSnapshots:{_:0},ay:S.activeYear||2026,ej:S.emailjs||{_:0},t:Date.now()};
+    const raw={act:Object.keys(S.act||{}).length?fbKeySafe(S.act):{_:0},ascr:Object.keys(S.ascr||{}).length?S.ascr:{_:0},SL:Object.keys(SL||{}).length?fbKeySafe(SL):{_:0},apw:S.adminPwH||'',opw:Object.keys(S.orgPw||{}).length?S.orgPw:{_:0},th:S.theme||'light',kpi:Object.keys(S.kpi||{}).length?S.kpi:{_:0},log:(S.log||[]).length?(S.log||[]).slice(-500):['_'],users:Object.keys(S.users||{}).length?(()=>{const u={};Object.entries(S.users).forEach(([k,v])=>{u[k]={...v,orgs:(v.orgs&&v.orgs.length)?v.orgs:['_none'],perms:Object.keys(v.perms||{}).length?v.perms:{_:0}};});return fbKeySafe(u);})():{_:0},oo:(S.orgOrder||[]).length?S.orgOrder:['_'],ann:S.announcement||'',wg:(S.widgets||[]).length?S.widgets:[{_:0}],yr:Object.keys(S.yearly||{}).length?S.yearly:{_:0},dl:Object.keys(S.deadlines||{}).length?S.deadlines:{_:0},cm:Object.keys(S.comments||{}).length?S.comments:{_:0},tg:Object.keys(S.tags||{}).length?S.tags:{_:0},ap:Object.keys(S.approval||{}).length?S.approval:{_:0},ar:S.autoRefresh||0,al:(S.alerts||[]).length?S.alerts:[{_:0}],pi:Object.keys(S.piPool||{}).length?S.piPool:{_:0},pic:(S.piCategories||[]).length?S.piCategories:['_'],piw:S.piWeights||{_:0},pil:S.piIndexLabels||{_:0},co:S.corpOrg||'_',bd:(S.board||[]).length?S.board:[{_:0}],ys:Object.keys(S.yearSnapshots||{}).length?S.yearSnapshots:{_:0},ay:S.activeYear||2026,ej:S.emailjs||{_:0},ai:S.aiConfig||{_:0},t:Date.now()};
     const d=JSON.parse(JSON.stringify(raw));S._lastFBTime=d.t;
     _fbRef.set(d).then(()=>{setTimeout(()=>{_fbSyncing=false;hideLoading();},300);updateFBStatus('synced');}).catch(e=>{_fbSyncing=false;hideLoading();updateFBStatus('error');console.error('Firebase write error:',e);});
   }catch(e){_fbSyncing=false;hideLoading();console.error('Firebase serialize error:',e);}
@@ -3269,7 +3863,7 @@ function applyRemoteData(d,isExplicitLoad){
   if(d.co&&d.co!=='_')S.corpOrg=d.co;
   if(d.ys&&typeof d.ys==='object'){const c={...d.ys};delete c._;if(Object.keys(c).length)S.yearSnapshots=c;}
   if(d.bd){const c=Array.isArray(d.bd)?d.bd.filter(x=>x&&!(x._===0)):fixArr(d.bd)||[];if(c.length)S.board=c;}
-  if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}
+  if(d.ej&&typeof d.ej==='object'){const c={...d.ej};delete c._;if(Object.keys(c).length)S.emailjs=c;}if(d.ai&&typeof d.ai==='object'){const c={...d.ai};delete c._;if(c.apiKey)S.aiConfig=c;}
   if(d.pic){const c=Array.isArray(d.pic)?d.pic.filter(x=>x&&x!=='_'):fixArr(d.pic)||[];if(c.length)S.piCategories=c;}
   if(S.curAccount&&S.users[S.curAccount.id])S.curAccount=S.users[S.curAccount.id];
   try{const _sd={act:S.act,ascr:S.ascr,SL,apw:S.adminPwH,opw:S.orgPw,th:S.theme,kpi:S.kpi,log:S.log,users:S.users,oo:S.orgOrder,ann:S.announcement,wg:S.widgets,yr:S.yearly,dl:S.deadlines,cm:S.comments,tg:S.tags,ap:S.approval,ar:S.autoRefresh,al:S.alerts,pi:S.piPool,pic:S.piCategories,piw:S.piWeights,pil:S.piIndexLabels,co:S.corpOrg,bd:S.board,ys:S.yearSnapshots,ay:S.activeYear,ej:S.emailjs,t:d.t};localStorage.setItem(LS,JSON.stringify(_sd));}catch(e){}
