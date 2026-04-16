@@ -1012,16 +1012,44 @@ function getValidationBadge(g,u,si,ii){const k=AK(g,u,si,ii),ac=S.act[k]||'',it=
 
 // ══ DASHBOARD.JS — Dashboard widgets and charts ══
 
-function renderDash(){const root=document.getElementById('dash-root');const has=Object.keys(S.kpi).length>0;const REMOVED_TYPES=['sec_compare','top_bottom','scale_status','lock_status'];const vis=S.widgets.filter(w=>w.visible&&!REMOVED_TYPES.includes(w.type));
-  let yearBanner='';
-  if(S.activeYear!==CURRENT_YEAR){
-    const ro=isYearReadonly();
-    yearBanner=`<div style="background:${ro?'linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,191,36,.15))':'linear-gradient(135deg,rgba(59,130,246,.08),rgba(59,130,246,.15))'};border:1px solid ${ro?'rgba(251,191,36,.3)':'rgba(59,130,246,.3)'};border-radius:10px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><span style="font-size:16px">📅</span><div><span style="font-size:12px;font-weight:800;color:${ro?'var(--amber)':'var(--blue)'}">${S.activeYear}년 데이터 ${ro?'조회':'편집'} 중</span><span style="font-size:10px;color:var(--t3);margin-left:8px">${ro?'읽기 전용 — 수정하려면 관리자 권한 필요':'관리자 모드 — 데이터 편집 가능'}</span></div></div>`;
+function renderDash(){const root=document.getElementById('dash-root');if(!root)return;
+  // Dashboard ALWAYS shows current year (CURRENT_YEAR = 2026) data
+  // If user is viewing another year in KPI menu, temporarily swap to current year for dashboard
+  const needSwap=S.activeYear!==CURRENT_YEAR;
+  let _savedKpi,_savedAct,_savedAscr,_savedSL,_savedYear;
+  if(needSwap){
+    // Save current (non-2026) state
+    _savedKpi=S.kpi;_savedAct=S.act;_savedAscr=S.ascr;_savedSL={...SL};_savedYear=S.activeYear;
+    // Load 2026 data from snapshot
+    const curSnap=S.yearSnapshots?.[CURRENT_YEAR];
+    if(curSnap){
+      S.kpi=curSnap.kpi||{};
+      S.act=curSnap.act||{};
+      S.ascr=curSnap.ascr||{};
+      Object.keys(SL).forEach(k=>delete SL[k]);
+      if(curSnap.SL)Object.assign(SL,curSnap.SL);
+    }else{
+      // No snapshot yet — fall back to empty for dash rendering (don't corrupt view)
+      S.kpi={};S.act={};S.ascr={};
+      Object.keys(SL).forEach(k=>delete SL[k]);
+    }
+    S.activeYear=CURRENT_YEAR;
   }
-  if(!vis.length){root.innerHTML=yearBanner+'<div style="text-align:center;padding:40px;color:var(--t3)">표시할 위젯이 없습니다</div>';return;}
-// Ensure S.dbOrg is set before rendering any widget
-if(has){const gks=visibleOrgs().filter(g=>g!=='전사KPI');if(!S.dbOrg||!gks.includes(S.dbOrg))S.dbOrg=gks[0]||null;}
-const rows={};vis.forEach(w=>{const r=w.row!=null?w.row:999;if(!rows[r])rows[r]=[];rows[r].push(w);});const sortedRows=Object.keys(rows).map(Number).sort((a,b)=>a-b);let html='';try{sortedRows.forEach(r=>{const wgs=rows[r];let rowHtml='';wgs.forEach(w=>{const inner=renderWidget(w,has);const sz=w.size||'100';if(inner!==null&&inner!==undefined&&inner!==''){rowHtml+=`<div class="wg wg-${sz}">${inner}</div>`;}});if(rowHtml)html+=`<div class="db-row">${rowHtml}</div>`;});}catch(e){console.warn('renderDash error:',e);html='';}root.innerHTML=yearBanner+(html||'<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:10px">📊</div><div style="font-size:13px;font-weight:700">데이터가 없습니다</div><div style="font-size:11px;margin-top:4px">KPI 데이터를 등록하면 대시보드가 표시됩니다</div></div>');}
+
+  try{
+  const has=Object.keys(S.kpi).length>0;const REMOVED_TYPES=['sec_compare','top_bottom','scale_status','lock_status'];const vis=S.widgets.filter(w=>w.visible&&!REMOVED_TYPES.includes(w.type));
+  let yearBanner='';
+  const rows={};vis.forEach(w=>{const r=w.row!=null?w.row:999;if(!rows[r])rows[r]=[];rows[r].push(w);});const sortedRows=Object.keys(rows).map(Number).sort((a,b)=>a-b);let html='';try{sortedRows.forEach(r=>{const wgs=rows[r];let rowHtml='';wgs.forEach(w=>{const inner=renderWidget(w,has);const sz=w.size||'100';if(inner!==null&&inner!==undefined&&inner!==''){rowHtml+=`<div class="wg wg-${sz}">${inner}</div>`;}});if(rowHtml)html+=`<div class="db-row">${rowHtml}</div>`;});}catch(e){console.warn('renderDash error:',e);html='';}root.innerHTML=yearBanner+(html||'<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:10px">📊</div><div style="font-size:13px;font-weight:700">데이터가 없습니다</div><div style="font-size:11px;margin-top:4px">KPI 데이터를 등록하면 대시보드가 표시됩니다</div></div>');
+  }finally{
+    if(needSwap){
+      // Restore the user's actual viewing state
+      S.kpi=_savedKpi;S.act=_savedAct;S.ascr=_savedAscr;
+      Object.keys(SL).forEach(k=>delete SL[k]);
+      Object.assign(SL,_savedSL);
+      S.activeYear=_savedYear;
+    }
+  }
+}
 
 function renderWidget(w,has){
   try{
@@ -1227,6 +1255,23 @@ function addReportBtn(){const hdr=document.querySelector('#pg-kpi > div:first-ch
 // ══ PI.JS — PI Pool management ══
 
 function renderPI(){
+  // PI Pool is year-INDEPENDENT — always use CURRENT_YEAR data for org visibility
+  const needSwap=S.activeYear!==CURRENT_YEAR;
+  let _savedKpi,_savedAct,_savedAscr,_savedSL,_savedYear,_savedPi,_savedCm,_savedTg;
+  if(needSwap){
+    _savedKpi=S.kpi;_savedAct=S.act;_savedAscr=S.ascr;_savedSL={...SL};_savedYear=S.activeYear;
+    _savedPi=S.piPool;_savedCm=S.comments;_savedTg=S.tags;
+    const curSnap=S.yearSnapshots?.[CURRENT_YEAR];
+    if(curSnap){
+      S.kpi=curSnap.kpi||{};S.act=curSnap.act||{};S.ascr=curSnap.ascr||{};
+      Object.keys(SL).forEach(k=>delete SL[k]);
+      if(curSnap.SL)Object.assign(SL,curSnap.SL);
+      S.piPool=curSnap.pi||{};S.comments=curSnap.cm||{};S.tags=curSnap.tg||{};
+    }
+    S.activeYear=CURRENT_YEAR;
+  }
+
+  try{
   const tabsEl=document.getElementById('pi-org-tabs');
   const contentEl=document.getElementById('pi-content');
   const vo=visibleOrgs();
@@ -1235,8 +1280,17 @@ function renderPI(){
   if(!S._piMode)S._piMode='pool';
   tabsEl.innerHTML=`<div style="display:flex;gap:5px;flex-wrap:wrap;flex:1">${vo.map(g=>`<button class="org-btn${g===S.piOrg?' on':''}" onclick="S.piOrg='${E(g)}';renderPI()">${E(S.kpi[g]?.label||g)}</button>`).join('')}</div><div style="display:flex;gap:3px"><button class="btn${S._piMode==='pool'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='pool';renderPI()">Pool</button><button class="btn${S._piMode==='score'?' btn-p':''}" style="font-size:9px;padding:3px 8px" onclick="S._piMode='score';renderPI()">Scoring</button></div>`;
 
-  if(S._piMode==='score')return renderPIScore();
-  return renderPIPool();
+  if(S._piMode==='score')renderPIScore();
+  else renderPIPool();
+  }finally{
+    if(needSwap){
+      S.kpi=_savedKpi;S.act=_savedAct;S.ascr=_savedAscr;
+      Object.keys(SL).forEach(k=>delete SL[k]);
+      Object.assign(SL,_savedSL);
+      S.activeYear=_savedYear;
+      S.piPool=_savedPi;S.comments=_savedCm;S.tags=_savedTg;
+    }
+  }
 }
 
 function renderPIPool(){
@@ -3649,7 +3703,7 @@ function switchYear(targetYear){
   const prevYear=S.activeYear;
   const curPage=S.page||'dash';
 
-  // 1. Save current year data as snapshot
+  // 1. Save current year data as snapshot (ALWAYS - ensures CURRENT_YEAR has snapshot for dash)
   saveCurrentYearSnapshot(prevYear);
 
   // 2. Load target year data
