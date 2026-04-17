@@ -1108,18 +1108,20 @@ function wTotal(has){
     const sKpi=snap.kpi;const sAct=snap.act||{};const sSL=snap.SL||{};
     const sUnit=sKpi[g].units[u];
     if(!sUnit||!sUnit.sections)return{year:yr,tsc:null,tmx:null,tp:null};
-    let ytsc=0,ytmx=0,any=false;
+    let ytsc=0,ytmx=0,any=false,hasAnyAct=false;
     sUnit.sections.forEach((sec,si)=>{
       (sec.items||[]).forEach((it,ii)=>{
         ytmx+=it.pts||0;
         const k=g+'|'+u+'|'+si+'|'+ii;const ac=sAct[k]||'';
         if(ac.trim()){
+          hasAnyAct=true;
           const lk=g+'__'+u+'__'+si+'__'+ii;
           const sc=cFS(it.pts,ac,sSL[lk],it.direction);
           if(sc!=null){ytsc+=sc;any=true;}
         }
       });
     });
+    if(!hasAnyAct)return{year:yr,tsc:null,tmx:null,tp:null};
     return{year:yr,tsc:any?Math.round(ytsc*10)/10:null,tmx:ytmx,tp:any&&ytmx?Math.round(ytsc/ytmx*100):null};
   });
 
@@ -1328,7 +1330,7 @@ function renderPIPool(){
   if(!totalFiltered){
     h+='<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px">📌</div><div style="font-size:13px;font-weight:700">'+(q?'검색 결과 없음':'등록된 PI가 없습니다')+'</div></div>';
   }else{
-    PI_CATEGORIES().forEach(cat=>{
+    const allCats=[...PI_CATEGORIES(),...Object.keys(grouped).filter(c=>!PI_CATEGORIES().includes(c))];allCats.forEach(cat=>{
       const items=grouped[cat];if(!items||!items.length)return;
       const cc=catColors[cat]||catColors['기타'];
       h+='<div style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:6px;padding:4px 0;margin-bottom:6px"><span style="display:inline-block;width:3px;height:16px;border-radius:2px;background:'+cc[0]+'"></span><span style="font-size:12px;font-weight:800">'+cat+'</span><span style="font-size:9px;padding:1px 6px;border-radius:10px;background:'+cc[1]+'.1);color:'+cc[0]+';font-weight:700">'+items.length+'</span></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">';
@@ -1956,7 +1958,7 @@ ${indices.map((idx,i)=>(i+1)+'. '+idx.k+' ('+idx.l+'): '+idx.d).join('\n')}
   "extracted": [
     {
       "name": "지표명 (간결하게, 예: 5G 가입자 수)",
-      "category": "재무|전략|고객|프로세스|ESG|기타 중 하나",
+      "category": "${PI_CATEGORIES().join('|')}",
       "unit": "측정 단위 (예: %, 명, 억원)",
       "rationale": "추출 근거 (1-2문장)",
       "scores": {${indices.map(idx=>'"'+idx.k+'":4').join(",")}},
@@ -2078,6 +2080,19 @@ function parseAIResponse(text){
   }
 }
 
+
+function validateAICategories(result){
+  const validCats=new Set(PI_CATEGORIES());
+  const extracted=result.extracted||[];
+  const issues=[];
+  extracted.forEach((item,idx)=>{
+    if(!validCats.has(item.category)){
+      issues.push({idx,name:item.name,aiCat:item.category});
+    }
+  });
+  return issues;
+}
+
 function showAIResults(result){
   const step2=document.getElementById('ai-step2');
   const step3=document.getElementById('ai-step3');
@@ -2132,7 +2147,14 @@ function showAIResults(result){
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
               <span style="font-size:13px;font-weight:800">${E(item.name)}</span>
-              <span style="font-size:8px;padding:1px 6px;border-radius:4px;background:${cc}18;color:${cc};font-weight:700">${E(item.category||'기타')}</span>
+              ${(()=>{
+                const validCats=PI_CATEGORIES();const isValid=validCats.includes(item.category);
+                if(isValid)return '<span style="font-size:8px;padding:1px 6px;border-radius:4px;background:'+cc+'18;color:'+cc+';font-weight:700">'+E(item.category)+'</span>';
+                return '<select class="sinp" id="ai-cat-'+idx+'" style="font-size:9px;padding:1px 4px;border:1px solid var(--amber);border-radius:4px;background:rgba(251,191,36,.08);color:var(--amber);font-weight:700;max-width:120px" title="AI가 제안한 카테고리 \''+E(item.category)+'\'이(가) 기존 목록에 없습니다">'
+                  +validCats.map(c=>'<option value="'+E(c)+'">'+E(c)+'</option>').join('')
+                  +'<option value="__new__" style="color:var(--blue)">+ '+E(item.category)+' (신규 등록)</option>'
+                  +'</select><span style="font-size:7px;color:var(--amber);margin-left:2px" title="AI 제안: '+E(item.category)+'">⚠</span>';
+              })()}
               ${item.unit?`<span style="font-size:9px;color:var(--t3)">${E(item.unit)}</span>`:''}
             </div>
             <div style="font-size:10px;color:var(--t2);margin-bottom:6px;line-height:1.4">💡 ${E(item.rationale||'')}</div>
@@ -2230,7 +2252,20 @@ function applyAIResults(){
     S.piPool[targetOrg].push({
       id:'pi_'+Date.now()+'_'+idx,
       name:item.name,
-      category:item.category||'기타',
+      category:(()=>{
+        const sel=document.getElementById('ai-cat-'+idx);
+        if(sel){
+          if(sel.value==='__new__'){
+            // Register new category
+            const newCat=item.category||'기타';
+            ensurePICatArray();
+            if(!S.piCategories.includes(newCat)){S.piCategories.push(newCat);addL('카테고리추가',newCat);}
+            return newCat;
+          }
+          return sel.value;
+        }
+        return item.category||'기타';
+      })(),
       unit:item.unit||'',
       owner:S.curAccount?.name||'',
       status:'등록',
