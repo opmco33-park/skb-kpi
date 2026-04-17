@@ -1572,7 +1572,7 @@ function openPIEdit(g,id){
   _piCtx={g,id:item.id,isNew};
   const allOrgs=ordKeys().filter(og=>canEdit(og));
   let orgSelectorHtml='';
-  if(isNew&&allOrgs.length>1){
+  if(allOrgs.length>1){
     const btns=allOrgs.map(og=>{
       const isJeonsa=og===getCorpOrg();
       const isOn=isJeonsa||og===g;
@@ -1655,11 +1655,31 @@ function savePIEdit(){
     addL('PI추가',nm+' → '+selOrgs.map(og=>S.kpi[og]?.label||og).join(', '));
     toast(cnt+'개 조직에 PI 추가','s');
   }else{
-    const item={...itemBase,id};
-    if(!S.piPool[g])S.piPool[g]=[];
-    const idx=S.piPool[g].findIndex(p=>p.id===id);
-    if(idx>=0)S.piPool[g][idx]=item;
-    addL('PI수정',g+': '+nm);toast('저장 완료','s');
+    // Edit mode: handle org changes
+    const orgBtns=document.querySelectorAll('#pi-orgs .org-btn.on');
+    const selOrgs=orgBtns.length?Array.from(orgBtns).map(b=>b.dataset.og):[g];
+    // Remove from old org if not in selection
+    if(!selOrgs.includes(g)){
+      S.piPool[g]=(S.piPool[g]||[]).filter(p=>p.id!==id);
+    }else{
+      // Update in current org
+      if(!S.piPool[g])S.piPool[g]=[];
+      const idx=S.piPool[g].findIndex(p=>p.id===id);
+      if(idx>=0)S.piPool[g][idx]={...itemBase,id};
+    }
+    // Add to newly selected orgs (that didn't have this PI before)
+    selOrgs.forEach(og=>{
+      if(og===g)return; // already handled above
+      if(!S.piPool[og])S.piPool[og]=[];
+      const exists=S.piPool[og].some(p=>p.id===id||p.name===nm);
+      if(!exists)S.piPool[og].push({...itemBase,id:'pi_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)});
+    });
+    // Remove from orgs that were deselected
+    ordKeys().forEach(og=>{
+      if(og===g||selOrgs.includes(og))return;
+      if(S.piPool[og])S.piPool[og]=S.piPool[og].filter(p=>p.id!==id&&p.name!==nm);
+    });
+    addL('PI수정',nm+' → '+selOrgs.map(og=>S.kpi[og]?.label||og).join(', '));toast('저장 완료','s');
   }
   save();document.getElementById('pi-edit-m')?.remove();renderPI();
 }
@@ -2128,13 +2148,17 @@ function showAIResults(result){
   }else{
     // Target org selector
     const allOrgs=ordKeys().filter(og=>canEdit(og));
-    html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:var(--sec);border-radius:6px">
-      <span style="font-size:10px;color:var(--t3)">등록 대상 조직:</span>
-      <select id="ai-target-org" class="sinp" style="font-size:11px;padding:3px 8px;flex:1;max-width:200px">
-        ${allOrgs.map(og=>`<option value="${E(og)}"${og===S.piOrg?' selected':''}>${E(S.kpi[og]?.label||og)}</option>`).join('')}
-      </select>
-      <button class="btn" style="font-size:10px" onclick="aiCheckAll(true)">✓ 전체 선택</button>
-      <button class="btn" style="font-size:10px" onclick="aiCheckAll(false)">전체 해제</button>
+    html+=`<div style="margin-bottom:10px;padding:8px 12px;background:var(--sec);border-radius:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:10px;font-weight:700;color:var(--t3)">등록 대상 조직 <span style="color:var(--cyan)">(복수 선택)</span></span>
+        <div style="display:flex;gap:4px">
+          <button class="btn" style="font-size:9px;padding:1px 6px" onclick="document.querySelectorAll('#ai-org-btns .org-btn').forEach(b=>{if(b.dataset.locked!=='1')b.classList.add('on')})">전체선택</button>
+          <button class="btn" style="font-size:9px;padding:1px 6px" onclick="document.querySelectorAll('#ai-org-btns .org-btn').forEach(b=>{if(b.dataset.locked!=='1')b.classList.remove('on')})">해제</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap" id="ai-org-btns">
+        ${allOrgs.map(og=>{const isJeonsa=og===(getCorpOrg()||'');const lbl=E(S.kpi[og]?.label||og);return isJeonsa?'<button type="button" class="org-btn on" data-og="'+E(og)+'" data-locked="1" style="font-size:9px;padding:2px 6px;opacity:.8;cursor:default">'+lbl+' 🔒</button>':'<button type="button" class="org-btn on" data-og="'+E(og)+'" onclick="this.classList.toggle(\'on\')" style="font-size:9px;padding:2px 6px">'+lbl+'</button>';}).join('')}
+      </div>
     </div>`;
     extracted.forEach((item,idx)=>{
       const catColors={재무:'#3b82f6',전략:'#10b981',고객:'#8b5cf6',프로세스:'#f59e0b',ESG:'#06b6d4',기타:'#64748b'};
@@ -2241,22 +2265,18 @@ function resetAIAnalysis(){
 
 function applyAIResults(){
   if(!_aiExtractResult){toast('결과가 없습니다','e');return;}
-  const targetOrg=document.getElementById('ai-target-org')?.value||S.piOrg;
+  const orgBtns=document.querySelectorAll('#ai-org-btns .org-btn.on');
+  const targetOrgs=orgBtns.length?Array.from(orgBtns).map(b=>b.dataset.og):[S.piOrg];
   let newCount=0,updatedCount=0;
 
-  // Apply extracted (new PIs)
+  // Apply extracted (new PIs) to ALL selected orgs
   (_aiExtractResult.extracted||[]).forEach((item,idx)=>{
     const cb=document.getElementById('ai-ext-'+idx);
     if(!cb||!cb.checked)return;
-    if(!S.piPool[targetOrg])S.piPool[targetOrg]=[];
-    S.piPool[targetOrg].push({
-      id:'pi_'+Date.now()+'_'+idx,
-      name:item.name,
-      category:(()=>{
+    const cat=(()=>{
         const sel=document.getElementById('ai-cat-'+idx);
         if(sel){
           if(sel.value==='__new__'){
-            // Register new category
             const newCat=item.category||'기타';
             ensurePICatArray();
             if(!S.piCategories.includes(newCat)){S.piCategories.push(newCat);addL('카테고리추가',newCat);}
@@ -2265,7 +2285,13 @@ function applyAIResults(){
           return sel.value;
         }
         return item.category||'기타';
-      })(),
+      })();
+    targetOrgs.forEach(tOrg=>{
+    if(!S.piPool[tOrg])S.piPool[tOrg]=[];
+    S.piPool[tOrg].push({
+      id:'pi_'+Date.now()+'_'+idx,
+      name:item.name,
+      category:cat,
       unit:item.unit||'',
       owner:S.curAccount?.name||'',
       status:'등록',
@@ -2273,6 +2299,7 @@ function applyAIResults(){
       scores:item.scores||{},
       _aiExtracted:true,
       _aiEvidence:item.evidence
+    });
     });
     newCount++;
   });
@@ -2293,7 +2320,7 @@ function applyAIResults(){
     });
   });
 
-  addL('AI분석',newCount+'개 신규 PI 추가, '+updatedCount+'개 업데이트');
+  addL('AI분석',newCount+'개 PI × '+targetOrgs.length+'개 조직, '+updatedCount+'개 업데이트');
   save();
   document.getElementById('ai-rpt-m').remove();
   if(S.page==='pi')renderPI();
