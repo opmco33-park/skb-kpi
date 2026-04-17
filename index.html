@@ -10,9 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d1117;--card:#161b22;--card2:#1c2333;--sec:#1a2030;--hov:#1f2937;--t1:#f0f4ff;--t2:#94a3b8;--t3:#4b5563;--bd:rgba(99,130,180,.18);--bd2:rgba(99,130,180,.28);--blue:#60a5fa;--cyan:#22d3ee;--green:#34d399;--amber:#fbbf24;--red:#f87171;--purple:#a78bfa;--tbg:#0d1117}
+:root{--ui-zoom:1;--bg:#0d1117;--card:#161b22;--card2:#1c2333;--sec:#1a2030;--hov:#1f2937;--t1:#f0f4ff;--t2:#94a3b8;--t3:#4b5563;--bd:rgba(99,130,180,.18);--bd2:rgba(99,130,180,.28);--blue:#60a5fa;--cyan:#22d3ee;--green:#34d399;--amber:#fbbf24;--red:#f87171;--purple:#a78bfa;--tbg:#0d1117}
 .light{--bg:#f4f6fb;--card:#fff;--card2:#f0f4fa;--sec:#e8edf5;--hov:#e2e8f3;--t1:#0f172a;--t2:#475569;--t3:#94a3b8;--bd:rgba(100,120,180,.15);--bd2:rgba(100,120,180,.25);--tbg:#fff}
-body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;font-size:13px;min-height:100vh}
+html{zoom:var(--ui-zoom)}body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;font-size:13px;min-height:100vh}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
 
 /* Header */
@@ -2265,6 +2265,39 @@ function applyAIResults(){
 }
 
 // ─── AI Config Modal (Admin only) ───
+
+function testAIConnection(){
+  const cfg=S.aiConfig;
+  if(!cfg?.apiKey){toast('API Key 미설정','e');return;}
+  toast('API 연결 테스트 중...','i');
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':cfg.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-haiku-4-5-20251001',
+      max_tokens:50,
+      messages:[{role:'user',content:'Say OK'}]
+    })
+  }).then(async r=>{
+    const txt=await r.text();
+    console.log('Test response status:',r.status);
+    console.log('Test response body:',txt);
+    if(r.ok){
+      toast('✅ API 연결 성공!','s');
+      alert('API 연결 성공!\n\n응답: '+txt.slice(0,200));
+    }else{
+      alert('API 연결 실패 ('+r.status+')\n\n전체 응답:\n'+txt);
+    }
+  }).catch(e=>{
+    alert('네트워크 오류:\n'+e.message);
+  });
+}
+
 function openAIConfigModal(){
   if(!S.isAdmin){toast('관리자 권한 필요','e');return;}
   const cfg=S.aiConfig||{};
@@ -2296,7 +2329,7 @@ function openAIConfigModal(){
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-d" onclick="clearAIConfig()">🗑 API Key 삭제</button>
       <button class="btn" onclick="document.getElementById('ai-cfg-m').remove()">취소</button>
-      <button class="btn btn-p" onclick="saveAIConfig()">저장</button>
+      <button class="btn" onclick="testAIConnection()">🔌 연결 테스트</button><button class="btn btn-p" onclick="saveAIConfig()">저장</button>
     </div>
   </div>`;
   document.body.appendChild(m);
@@ -3007,7 +3040,7 @@ function generatePPTInBrowser(sel,orgData){
 }
 function buildPPTScript(){return'';}
 
-function aSysData(el){const ds=(JSON.stringify({act:S.act,ascr:S.ascr,SL,kpi:S.kpi}).length/1024).toFixed(1);const tO=Object.keys(S.kpi).length;const tI=Object.values(S.kpi).reduce((a,g)=>a+Object.values(g.units).reduce((b,u)=>b+u.sections.reduce((c,s)=>c+s.items.length,0),0),0);const fA=Object.values(S.act).filter(v=>v&&v.trim()).length;const fbCfg=getFBConfig();el.innerHTML=`<div class="adm-s"><div class="adm-st">💾 시스템 현황</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px"><div class="chip"><div class="chip-l">용량</div><div class="chip-v" style="font-size:13px;color:var(--blue)">${ds}KB</div><div class="chip-m">/ ~4,500KB</div></div><div class="chip"><div class="chip-l">조직</div><div class="chip-v" style="font-size:13px;color:var(--green)">${tO}</div></div><div class="chip"><div class="chip-l">KPI</div><div class="chip-v" style="font-size:13px;color:var(--cyan)">${tI}</div></div><div class="chip"><div class="chip-l">실적입력</div><div class="chip-v" style="font-size:13px;color:var(--amber)">${fA}</div><div class="chip-m">/ ${tI}</div></div><div class="chip"><div class="chip-l">이력</div><div class="chip-v" style="font-size:13px;color:var(--purple)">${S.log.length}</div></div><div class="chip"><div class="chip-l">동기화</div><div class="chip-v" style="font-size:13px;color:${_fbReady?'var(--green)':'var(--t3)'}">${_fbReady?'✅':'오프라인'}</div></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-p" onclick="exportAll()">📤 JSON</button><button class="btn btn-p" onclick="exportCSV()">📊 Excel</button><button class="btn btn-p" onclick="exportLog()">📝 이력</button><button class="btn" style="border-color:var(--red);color:var(--red)" onclick="if(confirm('이력 초기화?')){S.log=[];save();toast('초기화','i');}">🗑이력초기화</button><button class="btn btn-d" onclick="clearAll()">🗑전체초기화</button></div></div><div class="adm-s"><div class="adm-st">🔥 Firebase 실시간 동기화</div><div class="adm-ss">${_fbReady?'<span style="color:var(--green);font-weight:700">연결됨</span> — '+fbCfg?.projectId:'<span style="color:var(--t3)">오프라인 모드</span> — 복수 PC 동기화를 사용하려면 Firebase를 설정하세요'}</div><div style="display:grid;gap:6px;margin-top:8px"><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">API Key</div><input class="sinp" id="sys-fb-apikey" value="${fbCfg?.apiKey||''}" placeholder="AIzaSy..."/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Database URL</div><input class="sinp" id="sys-fb-dburl" value="${fbCfg?.databaseURL||''}" placeholder="https://your-project.firebaseio.com"/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Project ID</div><input class="sinp" id="sys-fb-projid" value="${fbCfg?.projectId||''}" placeholder="your-project-id"/></div><div style="display:flex;gap:6px"><button class="btn btn-p" onclick="sysUpdateFB()">연결/업데이트</button><button class="btn" onclick="testFBConnection()">연결 테스트</button><button class="btn" onclick="copyFBShareURL()" style="border-color:var(--green);color:var(--green)">📋 공유 URL 복사</button>${_fbReady?'<button class="btn" onclick="sysDisconnectFB()">연결 해제</button>':''}</div></div></div><div class="adm-s"><div class="adm-st">🤖 AI 보고서 분석 설정</div><div class="adm-ss">${S.aiConfig?.apiKey?'<span style="color:var(--green);font-weight:700">설정됨</span> — 모델: '+(S.aiConfig.model||'claude-sonnet-4'):'<span style="color:var(--t3)">미설정</span> — API Key 등록 시 PI Pool에서 AI 보고서 분석 기능이 활성화됩니다'}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-p" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);border-color:#7c3aed" onclick="openAIConfigModal()">⚙ AI 설정</button>${S.aiConfig?.apiKey?'<button class="btn" onclick="openAIReportAnalyzer()">🚀 AI 분석 테스트</button>':''}</div></div>`;}
+function aSysData(el){const ds=(JSON.stringify({act:S.act,ascr:S.ascr,SL,kpi:S.kpi}).length/1024).toFixed(1);const tO=Object.keys(S.kpi).length;const tI=Object.values(S.kpi).reduce((a,g)=>a+Object.values(g.units).reduce((b,u)=>b+u.sections.reduce((c,s)=>c+s.items.length,0),0),0);const fA=Object.values(S.act).filter(v=>v&&v.trim()).length;const fbCfg=getFBConfig();el.innerHTML=`<div class="adm-s"><div class="adm-st">💾 시스템 현황</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px"><div class="chip"><div class="chip-l">용량</div><div class="chip-v" style="font-size:13px;color:var(--blue)">${ds}KB</div><div class="chip-m">/ ~4,500KB</div></div><div class="chip"><div class="chip-l">조직</div><div class="chip-v" style="font-size:13px;color:var(--green)">${tO}</div></div><div class="chip"><div class="chip-l">KPI</div><div class="chip-v" style="font-size:13px;color:var(--cyan)">${tI}</div></div><div class="chip"><div class="chip-l">실적입력</div><div class="chip-v" style="font-size:13px;color:var(--amber)">${fA}</div><div class="chip-m">/ ${tI}</div></div><div class="chip"><div class="chip-l">이력</div><div class="chip-v" style="font-size:13px;color:var(--purple)">${S.log.length}</div></div><div class="chip"><div class="chip-l">동기화</div><div class="chip-v" style="font-size:13px;color:${_fbReady?'var(--green)':'var(--t3)'}">${_fbReady?'✅':'오프라인'}</div></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-p" onclick="exportAll()">📤 JSON</button><button class="btn btn-p" onclick="exportCSV()">📊 Excel</button><button class="btn btn-p" onclick="exportLog()">📝 이력</button><button class="btn" style="border-color:var(--red);color:var(--red)" onclick="if(confirm('이력 초기화?')){S.log=[];save();toast('초기화','i');}">🗑이력초기화</button><button class="btn btn-d" onclick="clearAll()">🗑전체초기화</button></div></div><div class="adm-s"><div class="adm-st">🔥 Firebase 실시간 동기화</div><div class="adm-ss">${_fbReady?'<span style="color:var(--green);font-weight:700">연결됨</span> — '+fbCfg?.projectId:'<span style="color:var(--t3)">오프라인 모드</span> — 복수 PC 동기화를 사용하려면 Firebase를 설정하세요'}</div><div style="display:grid;gap:6px;margin-top:8px"><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">API Key</div><input class="sinp" id="sys-fb-apikey" value="${fbCfg?.apiKey||''}" placeholder="AIzaSy..."/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Database URL</div><input class="sinp" id="sys-fb-dburl" value="${fbCfg?.databaseURL||''}" placeholder="https://your-project.firebaseio.com"/></div><div><div style="font-size:10px;color:var(--t3);margin-bottom:2px">Project ID</div><input class="sinp" id="sys-fb-projid" value="${fbCfg?.projectId||''}" placeholder="your-project-id"/></div><div style="display:flex;gap:6px"><button class="btn btn-p" onclick="sysUpdateFB()">연결/업데이트</button><button class="btn" onclick="testFBConnection()">연결 테스트</button><button class="btn" onclick="copyFBShareURL()" style="border-color:var(--green);color:var(--green)">📋 공유 URL 복사</button>${_fbReady?'<button class="btn" onclick="sysDisconnectFB()">연결 해제</button>':''}</div></div></div><div class="adm-s"><div class="adm-st">🤖 AI 보고서 분석 설정</div><div class="adm-ss">${S.aiConfig?.apiKey?'<span style="color:var(--green);font-weight:700">설정됨</span> — 모델: '+(S.aiConfig.model||'claude-sonnet-4'):'<span style="color:var(--t3)">미설정</span> — API Key 등록 시 PI Pool에서 AI 보고서 분석 기능이 활성화됩니다'}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-p" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);border-color:#7c3aed" onclick="openAIConfigModal()">⚙ AI 설정</button>${S.aiConfig?.apiKey?'<button class="btn" onclick="testAIConnection()">🔌 연결 테스트</button><button class="btn" onclick="openAIReportAnalyzer()">🚀 AI 분석</button>':''}</div></div>`;}
 
 // ── 10. YEARLY DATA (5개년 실적) ──
 const YR_COLS=['Y-3','Y-2','Y-1','Y','Y+1','Y+2'];
@@ -4016,6 +4049,11 @@ function renderOnlineUsers(data){
 
 // ══ INIT.JS — Initialization ══
 
+
+function getUIZoom(){return parseFloat(localStorage.getItem('skb_kpi_zoom'))||1.1;}
+function setUIZoom(v){v=Math.max(0.8,Math.min(1.4,v));localStorage.setItem('skb_kpi_zoom',v);document.documentElement.style.setProperty('--ui-zoom',v);document.getElementById('zoom-val').textContent=Math.round(v*100)+'%';}
+function initUIZoom(){const z=getUIZoom();document.documentElement.style.setProperty('--ui-zoom',z);const el=document.getElementById('zoom-val');if(el)el.textContent=Math.round(z*100)+'%';}
+
 (async()=>{
   await initH();
   const has=load();
@@ -4035,6 +4073,7 @@ function renderOnlineUsers(data){
   }
   S.activeYear=CURRENT_YEAR;
 
+  initUIZoom();
   if(S.theme==='light')document.body.classList.add('light');
   document.getElementById('thBtn').textContent=S.theme==='light'?'🌙':'☀️';
 
